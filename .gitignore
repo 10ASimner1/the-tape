@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Local blob store used by store.fs.ts during development (M1).
+# Never commit archive payload to git — the repo holds metadata only.
+.tape-store/
+*.local.json
+
+# The PII salt. If this leaks, every maintainer hash in the archive becomes a
+# reversible email address. It lives in an Actions secret in CI and nowhere else.
+.tape-salt.local
+

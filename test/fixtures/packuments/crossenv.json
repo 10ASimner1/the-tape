@@ -1,0 +1,223 @@
+{
+ "_id": "crossenv",
+ "_rev": "34-e5dba75e9059c2d2a60ff72e92a6b7a8",
+ "name": "crossenv",
+ "time": {
+  "modified": "2023-03-07T23:22:15.505Z",
+  "created": "2017-07-19T04:21:00.066Z",
+  "5.0.0-beta.0": "2017-07-19T04:21:00.066Z",
+  "5.0.1": "2017-07-19T04:29:03.954Z",
+  "5.0.2": "2017-07-19T04:48:44.682Z",
+  "5.0.3": "2017-07-19T04:51:57.360Z",
+  "5.0.4": "2017-07-19T04:59:01.817Z",
+  "5.0.5": "2017-07-19T05:00:21.000Z",
+  "6.0.0": "2017-07-19T05:05:01.122Z",
+  "6.0.1": "2017-07-19T05:08:46.101Z",
+  "6.0.2": "2017-07-19T05:09:38.045Z",
+  "6.0.3": "2017-07-19T05:13:25.082Z",
+  "6.0.4": "2017-07-19T05:19:26.179Z",
+  "6.0.5": "2017-07-19T05:22:10.853Z",
+  "6.0.6": "2017-07-19T05:23:51.530Z",
+  "6.0.7": "2017-07-19T06:32:58.946Z",
+  "6.1.1": "2017-07-19T06:49:52.698Z",
+  "0.0.1-security": "2017-08-01T15:18:40.480Z",
+  "1.0.0": "2017-08-01T23:02:20.143Z",
+  "1.0.1": "2017-08-01T23:04:34.345Z",
+  "0.0.2-security": "2017-08-02T17:51:51.323Z"
+ },
+ "maintainers": [
+  {
+   "email": "npm@npmjs.com",
+   "name": "npm"
+  }
+ ],
+ "dist-tags": {
+  "latest": "0.0.2-security"
+ },
+ "readme": "# Security holding package\n\nThis package name is not currently in use, but was formerly occupied\nby another package. To avoid malicious use, npm is hanging on to the\npackage name, but loosely, and we'll probably give it to you if you\nwant it.\n\nYou may adopt this package by contacting maintainer20@redacted.invalid and\nrequesting the name.\n",
+ "versions": {
+  "0.0.1-security": {
+   "name": "crossenv",
+   "version": "0.0.1-security",
+   "description": "security holding package",
+   "repository": {
+    "type": "git",
+    "url": "git+https://github.com/npm/security-holder.git"
+   },
+   "bugs": {
+    "url": "https://github.com/npm/security-holder/issues"
+   },
+   "homepage": "https://github.com/npm/security-holder#readme",
+   "_id": "crossenv@0.0.1-security",
+   "_npmVersion": "5.3.0",
+   "_nodeVersion": "8.2.1",
+   "_npmUser": {
+    "name": "hacktask",
+    "email": "maintainer21@redacted.invalid"
+   },
+   "dist": {
+    "integrity": "sha512-YMC1zhXvZlpzQ4yzaakwr0N9/e3yzqtzzi2iXt/PwQ4CZIg5kz7bVjFa6iUuW5hFrYN6fklX8lnn7+eyoTxfFQ==",
+    "shasum": "4ceb6e19ed46c12f37458c5c4105aea72010a9a4",
+    "tarball": "https://registry.npmjs.org/crossenv/-/crossenv-0.0.1-security.tgz",
+    "signatures": [
+     {
+      "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+      "sig": "MEYCIQCPCPsA7q/NFdN883Xvwqaz0E5iNsqSgvf+b1tsI4jkVAIhANcFKAnUfGIHfScAp1oje/cPq/lENeR04eW9/al960Bm"
+     }
+    ]
+   },
+   "maintainers": [
+    {
+     "email": "maintainer20@redacted.invalid",
+     "name": "npm-support"
+    },
+    {
+     "email": "maintainer21@redacted.invalid",
+     "name": "hacktask"
+    }
+   ],
+   "_npmOperationalInternal": {
+    "host": "s3://npm-registry-packages",
+    "tmp": "tmp/crossenv-0.0.1-security.tgz_1501600720411_0.5434666834771633"
+   },
+   "directories": {}
+  },
+  "1.0.0": {
+   "name": "crossenv",
+   "version": "1.0.0",
+   "description": "",
+   "main": "index.js",
+   "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+   },
+   "author": "",
+   "license": "ISC",
+   "_id": "crossenv@1.0.0",
+   "_npmVersion": "5.0.3",
+   "_nodeVersion": "8.1.2",
+   "_npmUser": {
+    "name": "pjbr",
+    "email": "maintainer22@redacted.invalid"
+   },
+   "dist": {
+    "integrity": "sha512-2KoGYi2Ey89RdqQRe17DZFudtSS+Zha/jDwlEzQNJMGm9+molzW64yzuaPec48xjJqLpSNYJmGYETfzz9FyhmQ==",
+    "shasum": "85837e562a5dcd5944bd24efd88b0433c94a0dba",
+    "tarball": "https://registry.npmjs.org/crossenv/-/crossenv-1.0.0.tgz",
+    "signatures": [
+     {
+      "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+      "sig": "MEQCICtCqWY/h/CsXR4+eXPu92L651vxASeuEvS+9kvm85ARAiAqEhxkbxTyoMv1dInsI8M+y/Pv+y9YPfuZYQUwMhl3GQ=="
+     }
+    ]
+   },
+   "maintainers": [
+    {
+     "email": "maintainer20@redacted.invalid",
+     "name": "npm-support"
+    }
+   ],
+   "_npmOperationalInternal": {
+    "host": "s3://npm-registry-packages",
+    "tmp": "tmp/crossenv-1.0.0.tgz_1501628539970_0.4985543543007225"
+   },
+   "directories": {}
+  },
+  "1.0.1": {
+   "name": "crossenv",
+   "version": "1.0.1",
+   "description": "This package is no longer dangerous.",
+   "main": "index.js",
+   "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+   },
+   "author": {
+    "name": "PJ Briggs"
+   },
+   "license": "ISC",
+   "_id": "crossenv@1.0.1",
+   "_npmVersion": "5.0.3",
+   "_nodeVersion": "8.1.2",
+   "_npmUser": {
+    "name": "pjbr",
+    "email": "maintainer22@redacted.invalid"
+   },
+   "dist": {
+    "integrity": "sha512-X5XhUt+f8HOzMLAIz1hr8spAYQtuqv5qt27Keby+nipxlKw77Tr3DqlYl/lSneIDHeCk7BgzabIYA5UzqJ85qg==",
+    "shasum": "0e46a8b3535886e4ff5e79bb21da45e7680dc52a",
+    "tarball": "https://registry.npmjs.org/crossenv/-/crossenv-1.0.1.tgz",
+    "signatures": [
+     {
+      "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+      "sig": "MEQCIA7hJwlSnbcsEbWmOpvOOIgyCKKzmslohxtf/TiZ4xo+AiAoJE8WTkKlkEwDNBa6yw0GgWM7SgRmCzRkNsWwLKryaA=="
+     }
+    ]
+   },
+   "maintainers": [
+    {
+     "email": "maintainer20@redacted.invalid",
+     "name": "npm-support"
+    }
+   ],
+   "_npmOperationalInternal": {
+    "host": "s3://npm-registry-packages",
+    "tmp": "tmp/crossenv-1.0.1.tgz_1501628674264_0.909073737449944"
+   },
+   "directories": {}
+  },
+  "0.0.2-security": {
+   "name": "crossenv",
+   "version": "0.0.2-security",
+   "description": "security holding package",
+   "repository": {
+    "type": "git",
+    "url": "git+https://github.com/npm/security-holder.git"
+   },
+   "bugs": {
+    "url": "https://github.com/npm/security-holder/issues"
+   },
+   "homepage": "https://github.com/npm/security-holder#readme",
+   "_id": "crossenv@0.0.2-security",
+   "_npmVersion": "5.3.0",
+   "_nodeVersion": "6.9.4",
+   "_npmUser": {
+    "name": "npm",
+    "email": "npm@npmjs.com"
+   },
+   "dist": {
+    "integrity": "sha512-Zet/ldwzo70I+vUnjM9yHCWo2iqK/RM2s2VnZDNPE/fN062UXYXGqu9Hd7HlhNVhnYGclPcjNoySWhug5lctHw==",
+    "shasum": "ffd6ae6a6e9035d811f6dde88f8393c63b71ad6e",
+    "tarball": "https://registry.npmjs.org/crossenv/-/crossenv-0.0.2-security.tgz",
+    "signatures": [
+     {
+      "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+      "sig": "MEYCIQDEonGVylCeDdnwA/9kSTth6ac1Neqhb6O42TiC8M22oAIhAMaO7VocWHuovu/ue/jYWTZWGEH2xMNZkQMB5P178d5h"
+     }
+    ]
+   },
+   "maintainers": [
+    {
+     "email": "npm@npmjs.com",
+     "name": "npm"
+    }
+   ],
+   "_npmOperationalInternal": {
+    "host": "s3://npm-registry-packages",
+    "tmp": "tmp/crossenv-0.0.2-security.tgz_1501696311240_0.6907124482095242"
+   },
+   "directories": {}
+  }
+ },
+ "readmeFilename": "README.md",
+ "description": "security holding package",
+ "homepage": "https://github.com/npm/security-holder#readme",
+ "repository": {
+  "type": "git",
+  "url": "git+https://github.com/npm/security-holder.git"
+ },
+ "bugs": {
+  "url": "https://github.com/npm/security-holder/issues"
+ },
+ "users": {
+  "flumpus-dev": true
+ }
+}

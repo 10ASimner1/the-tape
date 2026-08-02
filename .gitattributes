@@ -1,0 +1,5 @@
+* text=auto eol=lf
+
+# Fixtures are verbatim captures of what the registry served. The tests describe
+# them as evidence, so git must never rewrite a byte of them — not even a newline.
+test/fixtures/** -text

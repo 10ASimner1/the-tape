@@ -1,0 +1,22 @@
+{
+ "_id": "claude-profile-switcher",
+ "name": "claude-profile-switcher",
+ "_rev": "3-20f03c374c2df1e90de3ccbe8cfec37c",
+ "time": {
+  "created": "2026-01-16T03:57:30.066Z",
+  "modified": "2026-07-31T07:21:58.190Z",
+  "1.0.1": "2026-01-16T03:57:30.208Z",
+  "unpublished": {
+   "time": "2026-01-16T06:10:06.771Z",
+   "versions": [
+    "1.0.1"
+   ]
+  }
+ },
+ "maintainers": [
+  {
+   "email": "maintainer10@redacted.invalid",
+   "name": "khainguyenhm"
+  }
+ ]
+}

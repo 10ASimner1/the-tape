@@ -1,0 +1,133 @@
+/**
+ * The entire durable mutable state of the recorder: one small JSON object.
+ *
+ * Note what is NOT here: no per-package table, and no global "emit versions newer
+ * than X" watermark. Both were considered and both are traps. A watermark that
+ * advances while a fetch backlog drains silently drops every event behind it, and
+ * the failure is invisible. Instead the observation row carries the packument's
+ * own absolute `time` map, and which versions are NEW is decided offline by the
+ * index, which has every prior observation in hand. There is nothing here to
+ * outrun.
+ */
+
+import type { FeedReceipt } from './feed.ts';
+import { keys, type Store } from './store.ts';
+
+export type Cursor = {
+  readonly schema: 1;
+  /** Last feed seq whose rows are durably written. */
+  readonly lastSeq: number;
+  readonly lastRunId: string | null;
+  readonly lastRunCompletedAt: string | null;
+  /** OSV `modified` timestamp of the oldest record fully written. */
+  readonly osvWatermark: string | null;
+  readonly bytesWrittenMonth: number;
+  readonly monthKey: string;
+};
+
+export class CursorRegressionError extends Error {
+  constructor(from: number, to: number) {
+    super(
+      `refusing to move the cursor backwards: ${from} -> ${to}. ` +
+        `Moving forward past unwritten rows loses events permanently; moving backwards ` +
+        `only causes duplicates, but it is never done implicitly. Use recover-cursor ` +
+        `to re-derive from the archive, or pass --force-rewind deliberately.`,
+    );
+    this.name = 'CursorRegressionError';
+  }
+}
+
+export function initial(headSeq: number, now: Date): Cursor {
+  return {
+    schema: 1,
+    lastSeq: headSeq,
+    lastRunId: null,
+    lastRunCompletedAt: null,
+    osvWatermark: null,
+    bytesWrittenMonth: 0,
+    monthKey: monthKeyOf(now),
+  };
+}
+
+export function monthKeyOf(date: Date): string {
+  return date.toISOString().slice(0, 7);
+}
+
+/**
+ * COMMIT B, and the reason FeedReceipt exists.
+ *
+ * This signature is the invariant: the cursor cannot advance without proof that
+ * the feed window is already in the archive, because a `FeedReceipt` can only be
+ * minted by `writeFeedBlob`. Every failure window in the run therefore produces
+ * duplicates, and none produces loss.
+ */
+export function advance(cursor: Cursor, receipt: FeedReceipt, now: Date): Cursor {
+  if (receipt.lastSeq < cursor.lastSeq) {
+    throw new CursorRegressionError(cursor.lastSeq, receipt.lastSeq);
+  }
+  const month = monthKeyOf(now);
+  return {
+    ...cursor,
+    lastSeq: receipt.lastSeq,
+    // Byte accounting resets with the billing month. R2 bills overage rather
+    // than hard-stopping, so the recorder has to stop itself.
+    bytesWrittenMonth: month === cursor.monthKey ? cursor.bytesWrittenMonth : 0,
+    monthKey: month,
+  };
+}
+
+export function withRunComplete(cursor: Cursor, runId: string, now: Date, bytes: number): Cursor {
+  return {
+    ...cursor,
+    lastRunId: runId,
+    lastRunCompletedAt: now.toISOString(),
+    bytesWrittenMonth: cursor.bytesWrittenMonth + bytes,
+  };
+}
+
+export function withOsvWatermark(cursor: Cursor, watermark: string): Cursor {
+  return { ...cursor, osvWatermark: watermark };
+}
+
+// ── Persistence ──────────────────────────────────────────────────────────────
+// M1 keeps the cursor in the blob store. M2 moves it to an orphan git branch,
+// where a non-fast-forward push rejection becomes the compare-and-swap between
+// overlapping runs — a primitive B2's S3 layer does not offer.
+
+export async function read(store: Store): Promise<Cursor | null> {
+  const bytes = await store.get(keys.cursor());
+  if (bytes === null) return null;
+  return JSON.parse(Buffer.from(bytes).toString('utf8')) as Cursor;
+}
+
+export async function write(store: Store, cursor: Cursor): Promise<void> {
+  await store.put(keys.cursor(), Buffer.from(`${JSON.stringify(cursor, null, 2)}\n`, 'utf8'));
+}
+
+/**
+ * The cursor is a cache of the archive, not the source of truth. If it is lost or
+ * clobbered, the true position is the highest seq we actually wrote, which is
+ * recoverable exactly from the feed object keys.
+ */
+export async function recoverFromArchive(store: Store): Promise<number | null> {
+  const objects = await store.list('raw/feed/');
+  let max: number | null = null;
+  for (const { key } of objects) {
+    const m = /\/(\d+)-(\d+)\.jsonl\.gz$/.exec(key);
+    if (m?.[2] === undefined) continue;
+    const last = Number(m[2]);
+    if (Number.isFinite(last) && (max === null || last > max)) max = last;
+  }
+  return max;
+}
+
+/** Guards against a cursor that has somehow moved past the live registry head. */
+export function assertSane(cursor: Cursor, head: number): void {
+  if (cursor.lastSeq > head) {
+    throw new Error(
+      `cursor.lastSeq (${cursor.lastSeq}) is ahead of the live feed head (${head}). ` +
+        `The cursor was clobbered forward, which is the one direction that loses events. ` +
+        `Run recover-cursor to re-derive it from the archive.`,
+    );
+  }
+}

@@ -1,0 +1,28 @@
+{
+ "_id": "cjhooker-test",
+ "_rev": "4-e3816c892afdd1f44b5528be102a7e81",
+ "name": "cjhooker-test",
+ "time": {
+  "created": "2018-03-19T05:12:44.660Z",
+  "0.0.1": "2018-03-19T05:12:44.742Z",
+  "modified": "2018-03-19T05:30:18.191Z",
+  "0.0.2": "2018-03-19T05:15:42.161Z",
+  "unpublished": {
+   "name": "cjhooker",
+   "time": "2018-03-19T05:30:18.190Z",
+   "tags": {
+    "latest": "0.0.1"
+   },
+   "versions": [
+    "0.0.1"
+   ],
+   "maintainers": [
+    {
+     "name": "cjhooker",
+     "email": "maintainer9@redacted.invalid"
+    }
+   ]
+  }
+ },
+ "_attachments": {}
+}

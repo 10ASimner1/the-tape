@@ -1,0 +1,27 @@
+{
+ "_id": "tr-config",
+ "_rev": "2-d72e3bbdbc3e95c7dea62da5f0ab351a",
+ "name": "tr-config",
+ "time": {
+  "created": "2018-03-20T18:43:49.039Z",
+  "0.1.0": "2018-03-20T18:43:49.223Z",
+  "modified": "2018-03-20T19:55:24.711Z",
+  "unpublished": {
+   "name": "sameidtr",
+   "time": "2018-03-20T19:55:24.711Z",
+   "tags": {
+    "latest": "0.1.0"
+   },
+   "versions": [
+    "0.1.0"
+   ],
+   "maintainers": [
+    {
+     "name": "sameidtr",
+     "email": "maintainer53@redacted.invalid"
+    }
+   ]
+  }
+ },
+ "_attachments": {}
+}

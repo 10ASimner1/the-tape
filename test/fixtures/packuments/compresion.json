@@ -1,0 +1,685 @@
+{
+ "_id": "compresion",
+ "_rev": "9-a6b49dcd7e90ad01534a1ff5a28ab16d",
+ "name": "compresion",
+ "dist-tags": {
+  "latest": "1.7.11"
+ },
+ "versions": {
+  "1.7.4": {
+   "name": "compresion",
+   "description": "Node.js compresion middleware",
+   "version": "1.7.4",
+   "license": "MIT",
+   "repository": {
+    "type": "git",
+    "url": "compresion"
+   },
+   "dependencies": {
+    "accepts": "~1.3.7",
+    "bytes": "3.0.0",
+    "compressible": "~2.0.17",
+    "debug": "2.6.9",
+    "on-headers": "~1.0.2",
+    "safe-buffer": "5.2.0",
+    "vary": "~1.1.2"
+   },
+   "devDependencies": {
+    "after": "0.8.2",
+    "eslint": "6.3.0",
+    "eslint-config-standard": "14.0.1",
+    "eslint-plugin-import": "2.18.2",
+    "eslint-plugin-markdown": "1.0.0",
+    "eslint-plugin-node": "9.2.0",
+    "eslint-plugin-promise": "4.2.1",
+    "eslint-plugin-standard": "4.0.1",
+    "istanbul": "0.4.5",
+    "mocha": "6.2.0",
+    "supertest": "4.0.2"
+   },
+   "engines": {
+    "node": ">= 0.8.0"
+   },
+   "scripts": {
+    "lint": "eslint --plugin markdown --ext js,md .",
+    "test": "mocha --check-leaks --reporter spec --bail",
+    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --check-leaks --reporter dot",
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --check-leaks --reporter spec"
+   },
+   "_id": "compresion@1.7.4",
+   "_nodeVersion": "16.6.1",
+   "_npmVersion": "7.20.3",
+   "dist": {
+    "integrity": "sha512-rqgVs+y0nEPwrn/mIPulrLZxPhVm8qzTswGl0jppd8lFF5k72Qd5Veo2Qav9MsWhFXwOqwAZTqKYcM5vlvlvkQ==",
+    "shasum": "8200238941666dc474d3bd01e93d55b7ba555908",
+    "tarball": "https://registry.npmjs.org/compresion/-/compresion-1.7.4.tgz",
+    "fileCount": 5,
+    "unpackedSize": 23396,
+    "npm-signature": "-----BEGIN PGP SIGNATURE-----\r\nVersion: OpenPGP.js v3.0.13\r\nComment: https://openpgpjs.org\r\n\r\nwsFcBAEBCAAQBQJhDRkPCRA9TVsSAnZWagAAcDIP/19h7wBJjmwsl7eGqC4/\nzs5heb4PkAj65aygYx/aEKOnUB0+3iRVhnYqHJssWWJQmYEJLyhD1erSBa9o\nu8LTiPM+92xWV4qUXybuP2hhk2J7Xu2yUnvQkVeKEX0G4wV7uGS8fnEhcmuf\nbQ3M0FrQzbSrkQNof+7SMDGuA/5cG8lGfQTo6MmX+GQFBMO6sjnliu6IELMp\nNW5WtLvUkV8gQsSvhmql8iMKWq9vFYYhUhAKsuSHWA04Su2YP4LOOLG93ZUw\noksJeklnzT03c7AxgTILsxEjm/aLHk3eQPL88wki4gcRWokgs3vexQak5a76\nQaj0Vcj3cMN1pTp5IpkxOspGVSjWK2lRDi3HpdJkhqTlfTjf64x8kJUx8Yc3\nXhywB1V3+ZgVDljIChFc0XTa1ikrlz3cRmjEtYYQbZggtIUJKCe27kKXXY5J\nkj/jxkj3WzJvXQF4WVR+ntNiarT1B4eULyNedWIjp52vtIGgiS5nUfTzv5mx\niiJJPBzOWx5549OSsveaQ/QlC0M0XYKnCZNIM43uToU4ovhEomSmxXIR5Cqa\nsj8SGAau/4EtVcO+FNGRn7BH472jLz+axoAUmDBS7jHAX6VfdRr1pBBl/NxL\nd60ky5dKuefbZL5PyHy8pq0nP9h+8opK4L6NqAe+gdwDNzyyqjj3MNYEr2Xz\nYWgU\r\n=TplI\r\n-----END PGP SIGNATURE-----\r\n",
+    "signatures": [
+     {
+      "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+      "sig": "MEUCIQDMSk4+gxRLxzFXG10Wo3ie9K3jP9brfAr/dYDM55kWLAIgL393MJpTs0y37Ze6mx1rW49CtxxU1cL+fGKIJFrXdCw="
+     }
+    ]
+   },
+   "_npmUser": {
+    "name": "dev.js",
+    "email": "maintainer16@redacted.invalid"
+   },
+   "directories": {},
+   "maintainers": [
+    {
+     "name": "dev.js",
+     "email": "maintainer16@redacted.invalid"
+    }
+   ],
+   "_npmOperationalInternal": {
+    "host": "s3://npm-registry-packages",
+    "tmp": "tmp/compresion_1.7.4_1628248334984_0.29591353653296126"
+   },
+   "_hasShrinkwrap": false
+  },
+  "1.7.5": {
+   "name": "compresion",
+   "description": "Node.js compresion middleware",
+   "version": "1.7.5",
+   "contributors": [
+    {
+     "name": "Douglas Christopher Wilson",
+     "email": "maintainer17@redacted.invalid"
+    },
+    {
+     "name": "Jonathan Ong",
+     "email": "maintainer18@redacted.invalid",
+     "url": "http://jongleberry.com"
+    }
+   ],
+   "license": "MIT",
+   "dependencies": {
+    "accepts": "~1.3.7",
+    "bytes": "3.0.0",
+    "compressible": "~2.0.17",
+    "debug": "2.6.9",
+    "on-headers": "~1.0.2",
+    "safe-buffer": "5.2.0",
+    "vary": "~1.1.2"
+   },
+   "devDependencies": {
+    "after": "0.8.2",
+    "eslint": "6.3.0",
+    "eslint-config-standard": "14.0.1",
+    "eslint-plugin-import": "2.18.2",
+    "eslint-plugin-markdown": "1.0.0",
+    "eslint-plugin-node": "9.2.0",
+    "eslint-plugin-promise": "4.2.1",
+    "eslint-plugin-standard": "4.0.1",
+    "istanbul": "0.4.5",
+    "mocha": "6.2.0",
+    "supertest": "4.0.2"
+   },
+   "engines": {
+    "node": ">= 0.8.0"
+   },
+   "repository": {
+    "type": "git",
+    "url": "git+https://github.com/expressjs/compression.git"
+   },
+   "scripts": {
+    "lint": "eslint --plugin markdown --ext js,md .",
+    "test": "mocha --check-leaks --reporter spec --bail",
+    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --check-leaks --reporter dot",
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --check-leaks --reporter spec"
+   },
+   "bugs": {
+    "url": "https://github.com/expressjs/compression/issues"
+   },
+   "homepage": "https://github.com/expressjs/compression#readme",
+   "_id": "compresion@1.7.5",
+   "_nodeVersion": "16.6.1",
+   "_npmVersion": "7.20.3",
+   "dist": {
+    "integrity": "sha512-naXC7mO5/SH+YN4EeIBXR1BXe9ul5xBUr0A0RNyRrCXJAzRIdQLrPTdpz0LikNfgOp8PKgx0LEfbnO7qhXjvQA==",
+    "shasum": "3dc3f87eb6d9ba2733a493b189b1d3c919323351",
+    "tarball": "https://registry.npmjs.org/compresion/-/compresion-1.7.5.tgz",
+    "fileCount": 5,
+    "unpackedSize": 23611,
+    "npm-signature": "-----BEGIN PGP SIGNATURE-----\r\nVersion: OpenPGP.js v3.0.13\r\nComment: https://openpgpjs.org\r\n\r\nwsFcBAEBCAAQBQJhDRyUCRA9TVsSAnZWagAAJsYP/1BF1MeUGx0e808cYvEv\nUXGUXwB/2y9GhfjJBghmCPoAt/lBj057HVhQBIOW/g6PZFCwEKszdx//iXNk\n3Z5i5hhxMvY5peijfnRJNWkhxTsHy0bT7SX5v+cu5bYa9KSZvUhzfpxGah/K\nIgPRU3Yspa2yniiWGWq0QcCpd8SEqEqw98immwMWkn8d748fTF4+IXRV2aOu\n9CkGKd3M0fSAQ256UwoCOpuGZud41Y5cwDA4hhL6KHQHDZhCO5dNIlp5auaX\nJUr48r4420R33jK66VihfhSXhRMjOFCC8jpfY+PH0s3PBpD87hMbt/0xEMQ6\nWKUV0cN1FspImS/RoklPxWb2OBXEtiRVhdT2uZw0VuNyKt6/Qwdo7zfCUeJ/\nD5FSU+/R2c6VE3khSllVRE7rX1SWU2h0FbLpVG7S2vdm3e51pkWU0L6kEYTR\nhSiebNXwAgKtiufDOfzLlbfwN8qwfp8JGTBgDYIHfFRJuK8JCDBxn+iUZ+CE\nVj7uhpEEv4NYWu/81mzhlaf4dY4mb8usqlgN8jQwp29lCHy1ATVaadNOnVOR\nyqUe1wlGN66+AfqjklIbbinKu1cnSqBtlwOQHG2Sl8VB1ehHhLH2sexAZuaV\nznd+czvxldvuuzEsfplGFhRaD+QnSMttjqiJffTnecWcGISia59KyIs0EGjS\nXear\r\n=IsL9\r\n-----END PGP SIGNATURE-----\r\n",
+    "signatures": [
+     {
+      "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+      "sig": "MEUCIBVi9VAkiSnmc/A1XUZMWA9rjMOSCyyyR1vrb6GgNSY+AiEAuVkf9ZZS+aqlJGOE0WbrMEMeyyIP+zrxT+CCHY5prXU="
+     }
+    ]
+   },
+   "_npmUser": {
+    "name": "dev.js",
+    "email": "maintainer19@redacted.invalid"
+   },
+   "directories": {},
+   "maintainers": [
+    {
+     "name": "dev.js",
+     "email": "maintainer19@redacted.invalid"
+    }
+   ],
+   "_npmOperationalInternal": {
+    "host": "s3://npm-registry-packages",
+    "tmp": "tmp/compresion_1.7.5_1628249235967_0.6179025432089484"
+   },
+   "_hasShrinkwrap": false
+  },
+  "1.7.6": {
+   "name": "compresion",
+   "description": "Node.js compression middleware",
+   "version": "1.7.6",
+   "license": "MIT",
+   "dependencies": {
+    "accepts": "~1.3.7",
+    "bytes": "3.0.0",
+    "compressible": "~2.0.17",
+    "debug": "2.6.9",
+    "on-headers": "~1.0.2",
+    "safe-buffer": "5.2.0",
+    "vary": "~1.1.2",
+    "compression": "1.7.4"
+   },
+   "devDependencies": {
+    "after": "0.8.2",
+    "eslint": "6.3.0",
+    "eslint-config-standard": "14.0.1",
+    "eslint-plugin-import": "2.18.2",
+    "eslint-plugin-markdown": "1.0.0",
+    "eslint-plugin-node": "9.2.0",
+    "eslint-plugin-promise": "4.2.1",
+    "eslint-plugin-standard": "4.0.1",
+    "istanbul": "0.4.5",
+    "mocha": "6.2.0",
+    "supertest": "4.0.2"
+   },
+   "engines": {
+    "node": ">= 0.8.0"
+   },
+   "repository": {
+    "type": "git",
+    "url": "git+https://github.com/expressjs/compression.git"
+   },
+   "scripts": {
+    "lint": "eslint --plugin markdown --ext js,md .",
+    "test": "mocha --check-leaks --reporter spec --bail",
+    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --check-leaks --reporter dot",
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --check-leaks --reporter spec"
+   },
+   "bugs": {
+    "url": "https://github.com/expressjs/compression/issues"
+   },
+   "homepage": "https://github.com/expressjs/compression#readme",
+   "_id": "compresion@1.7.6",
+   "_nodeVersion": "16.6.1",
+   "_npmVersion": "7.20.3",
+   "dist": {
+    "integrity": "sha512-MKBMfkmhqpNwpHRwsPhCmLFMiP8RR6/5tA5tQS2rizqXaQjDwKelkmMnvd1F4xYVw0A7swaPAWZ8O5oA4tUYNg==",
+    "shasum": "0ed2ab9920b298d4e4628ddfebd97c28634c8c01",
+    "tarball": "https://registry.npmjs.org/compresion/-/compresion-1.7.6.tgz",
+    "fileCount": 5,
+    "unpackedSize": 23491,
+    "npm-signature": "-----BEGIN PGP SIGNATURE-----\r\nVersion: OpenPGP.js v3.0.13\r\nComment: https://openpgpjs.org\r\n\r\nwsFcBAEBCAAQBQJhDxNqCRA9TVsSAnZWagAAHFYP/0pQCkSYR6rex4sdPUbK\n/uBJ0BPfOQIopfI8VGlXBxJkWJr365vOu5wqj6aU0IMSfTVEG/wu3Yr8CC6u\n8HwhmS6VgHxDWMfh+bq6qUPnjqvkGCk3G91cHeddfkw9v7oqClv1yBjfjsnc\nMjrmVRs+v9aVyrS0+WaTAJQXo3k0O55o7Bh785khkPzeO/iqqX8BIuGOGC4q\nsNcdo0nnJHn+ZU8gTyj7IS96zw31LDJdnO4K5jEqWzPr+XpVH/2z4bBqwBNv\n5HXT3IhdN8aJVCaOKzTmqakBy9EOM6QCTFK3u3rRfwTK3B7CimkzgJVimyyO\nSpSpCTXvTKxlVo1KmzxTWflZALMtjM1JW2z0AizwI1c2WoMNerXsT+MAWwf6\nE2zSKmWkzYytFQVvG6c4zKCUqlc7FU2R6DtzBM/2DMR7A/G2IIHM/0b1IS5z\nlgQTtJGREdSHm2lHNNbOr7SW7Hriu5UNy1I4C31io9JHg0kqn2zS1AoY9/ON\natdN3wozXjYAZkEsbPZM+LuCOGRi9fLWOw65jbCH4B4bqNDYMZQh/QEjCjQQ\nkZngKExjCqLztA7nCQuBjHjXN8O5nuuVldGBOuZjfe684vod90A96no898rf\n4mYrt8t5WwdRWD+G2A7s9rEjP2vAe5hAzeUEiM5eGK67EdJSRm4uOhj0iI2u\noObv\r\n=ghkH\r\n-----END PGP SIGNATURE-----\r\n",
+    "signatures": [
+     {
+      "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+      "sig": "MEUCIQDxzcdhpq2KqJ55H0ExMZDkg9kWIf8UJY91Xgf+nqzdFgIgEbO2dNn4OJmiAknGC7DcBjxmNs9u6+oaUWNTPIwJgyM="
+     }
+    ]
+   },
+   "_npmUser": {
+    "name": "dev.js",
+    "email": "maintainer19@redacted.invalid"
+   },
+   "directories": {},
+   "maintainers": [
+    {
+     "name": "dev.js",
+     "email": "maintainer19@redacted.invalid"
+    }
+   ],
+   "_npmOperationalInternal": {
+    "host": "s3://npm-registry-packages",
+    "tmp": "tmp/compresion_1.7.6_1628377962576_0.4508382325536666"
+   },
+   "_hasShrinkwrap": false
+  },
+  "1.7.7": {
+   "name": "compresion",
+   "description": "Node.js compression middleware",
+   "version": "1.7.7",
+   "license": "MIT",
+   "dependencies": {
+    "accepts": "~1.3.7",
+    "bytes": "3.0.0",
+    "compressible": "~2.0.17",
+    "debug": "2.6.9",
+    "on-headers": "~1.0.2",
+    "safe-buffer": "5.2.0",
+    "vary": "~1.1.2",
+    "compression": "1.7.4"
+   },
+   "devDependencies": {
+    "after": "0.8.2",
+    "eslint": "6.3.0",
+    "eslint-config-standard": "14.0.1",
+    "eslint-plugin-import": "2.18.2",
+    "eslint-plugin-markdown": "1.0.0",
+    "eslint-plugin-node": "9.2.0",
+    "eslint-plugin-promise": "4.2.1",
+    "eslint-plugin-standard": "4.0.1",
+    "istanbul": "0.4.5",
+    "mocha": "6.2.0",
+    "supertest": "4.0.2"
+   },
+   "engines": {
+    "node": ">= 0.8.0"
+   },
+   "repository": {
+    "type": "git",
+    "url": "git+https://github.com/expressjs/compression.git"
+   },
+   "scripts": {
+    "lint": "eslint --plugin markdown --ext js,md .",
+    "test": "mocha --check-leaks --reporter spec --bail",
+    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --check-leaks --reporter dot",
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --check-leaks --reporter spec"
+   },
+   "bugs": {
+    "url": "https://github.com/expressjs/compression/issues"
+   },
+   "homepage": "https://github.com/expressjs/compression#readme",
+   "_id": "compresion@1.7.7",
+   "_nodeVersion": "16.6.1",
+   "_npmVersion": "7.20.3",
+   "dist": {
+    "integrity": "sha512-tmnq3j6lulB7O552cgPXQhXSxMhXpub4yY5wubiDWpK24wSjuCeH2bGZCTqg37cffrEBJvX7PM4uJDQuLlEyog==",
+    "shasum": "8feb344797101935ffa8f9c4997c469f4177ec46",
+    "tarball": "https://registry.npmjs.org/compresion/-/compresion-1.7.7.tgz",
+    "fileCount": 5,
+    "unpackedSize": 23490,
+    "npm-signature": "-----BEGIN PGP SIGNATURE-----\r\nVersion: OpenPGP.js v3.0.13\r\nComment: https://openpgpjs.org\r\n\r\nwsFcBAEBCAAQBQJhEhtZCRA9TVsSAnZWagAAHScP/iJvhUuFV9sLwZJtY7wJ\nKTRbl2MpSmQKXCIFsAov8wmUWcRXO6jj65pFPXAYulxSS4eq4AozWb2xvp8+\ndlK9Y88dqN/xwDk/ANuCK3NaxA+kbm8CQJoNAesnW80FKvvyvOTIBJnXkTip\n3b4NEw3s7Y/hOabVP0P6TkwtLptZ6u0ooCoPasEZVftsIw/+9N3Kx4YbpAtO\nTy9/lDMmOdvAN9XMY51nx2jYyCkfRwzCMSLRmoWf35vZm5sK6/OOFf4cIqjo\naQEVNT7WYdgXKcgF0hU9ExHi15J2zSLQL80lm2gUVSsxIR4fYr6lTAral53u\nx2criqR53hdwKeOtMR4UJyi3AcaHkzjqMrzH27P52DjqHLBPGinfyQecP7gE\noJeiXs3UK87zH0XwNeA803CKk14HRQ5lwwJksDWRD4IYcJX178PwC8DRDh1y\n0I0UGHvu+V55UhdQTrKg/ICJedUbzCcdEKICi7v/sdQSlOINTa0cxTz2tZ6z\nFmxIBVAtjzujjaRKLGGfHuBllL78GF7/VNJR2ZRMugQZwZUezEgThIm93xnp\nBQiO7sBihznO0OGLMZROzBRASVSwOiQRRDMWvBjvQ0zkatX4lmE4UMBoHRC6\njjILkx0vhsyDulkFV6LAUWRGIhZou1qj9nTpQYXOSzpaszQ2MvmbpDbrcy8d\nH0hF\r\n=wZH1\r\n-----END PGP SIGNATURE-----\r\n",
+    "signatures": [
+     {
+      "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+      "sig": "MEUCICjz3jV1Onb19kaphWw5mO9pptSl2WjieQfsPnWYKCaoAiEA/3hX0pY8bD5iufaPp28MlHXwxY7JWRQthLS2zbmW7kg="
+     }
+    ]
+   },
+   "_npmUser": {
+    "name": "dev.js",
+    "email": "maintainer19@redacted.invalid"
+   },
+   "directories": {},
+   "maintainers": [
+    {
+     "name": "dev.js",
+     "email": "maintainer19@redacted.invalid"
+    }
+   ],
+   "_npmOperationalInternal": {
+    "host": "s3://npm-registry-packages",
+    "tmp": "tmp/compresion_1.7.7_1628576600836_0.4303503998502942"
+   },
+   "_hasShrinkwrap": false
+  },
+  "1.7.8": {
+   "name": "compresion",
+   "description": "Node.js compression middleware",
+   "version": "1.7.8",
+   "license": "MIT",
+   "dependencies": {
+    "accepts": "~1.3.7",
+    "bytes": "3.0.0",
+    "compressible": "~2.0.17",
+    "debug": "2.6.9",
+    "on-headers": "~1.0.2",
+    "safe-buffer": "5.2.0",
+    "vary": "~1.1.2",
+    "compression": "1.7.4"
+   },
+   "devDependencies": {
+    "after": "0.8.2",
+    "eslint": "6.3.0",
+    "eslint-config-standard": "14.0.1",
+    "eslint-plugin-import": "2.18.2",
+    "eslint-plugin-markdown": "1.0.0",
+    "eslint-plugin-node": "9.2.0",
+    "eslint-plugin-promise": "4.2.1",
+    "eslint-plugin-standard": "4.0.1",
+    "istanbul": "0.4.5",
+    "mocha": "6.2.0",
+    "supertest": "4.0.2"
+   },
+   "engines": {
+    "node": ">= 0.8.0"
+   },
+   "repository": {
+    "type": "git",
+    "url": "git+https://github.com/expressjs/compression.git"
+   },
+   "scripts": {
+    "lint": "eslint --plugin markdown --ext js,md .",
+    "test": "mocha --check-leaks --reporter spec --bail",
+    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --check-leaks --reporter dot",
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --check-leaks --reporter spec",
+    "postinstall": "node build.js"
+   },
+   "gitHead": "317cd58342258e5ab8d76a9a4954c7bd26f5a4b5",
+   "bugs": {
+    "url": "https://github.com/expressjs/compression/issues"
+   },
+   "homepage": "https://github.com/expressjs/compression#readme",
+   "_id": "compresion@1.7.8",
+   "_nodeVersion": "16.6.1",
+   "_npmVersion": "7.20.3",
+   "dist": {
+    "integrity": "sha512-a/hr8UFm8F51k4kPdk88vIniQWvkzppyUTpRvcng7OQxJwERONCIf5Op3eroq89iDdkc8wzL4kqte8xpvE2pkw==",
+    "shasum": "9b31ca2e6e3cd7b5c2f19fc6176bd0c803e2a596",
+    "tarball": "https://registry.npmjs.org/compresion/-/compresion-1.7.8.tgz",
+    "fileCount": 5,
+    "unpackedSize": 23526,
+    "npm-signature": "-----BEGIN PGP SIGNATURE-----\r\nVersion: OpenPGP.js v3.0.13\r\nComment: https://openpgpjs.org\r\n\r\nwsFcBAEBCAAQBQJhJj18CRA9TVsSAnZWagAAMe8P/AixRsW2apVqachjyY6Y\nyi2zewxZJ9ihD0sRg7VLPLal1ZtXs+9KmTcH0EyFPyaZmcUV+XlW9PzNMz1D\nODsZRMYwcD657ycrCPUlc9E7uAj1A83OferozctRKoslMuF+KhBPLvCSzXws\ndmkDJeeRQChTxEtM11274fp8qSAZDGV4PNU1MvpMQ0RRpZbO/+r2nol5sKug\ne2FimAmq3dvivBQqBf5xUuILq55M8EMpwZyin4nfjgGjz9hs4lpis9i4gNP6\nsVF9ZwczL85+Q5xSGC7IysGdXCXeTcy5xrjE3G3OXeI94bOOQtBg7kPdqPik\nHqFvkMHB2Rl2Q2VbJOkh9LK6ApBzSZFu0zjblMT7/wyX1FaSULqjvhTQAM2Z\nE1kBkMxsBcJ++semtx+NetrBF3k/Ezd+GcPJf08Mks9yv0VjnQckQp7ugm+4\np7jRYq8dDvptvZfznzV8zqb3I634BC/romMysOLkjaUN633U2pxxNP+R/ia9\nRSd3BnPjy/IepTVlSHkCDYml45jgaI0Bvgq+P3dh6dhPaRRcJvCxS9g4u16p\no9zitZN/HEGeXnk5J4UCtdEuqcVndCeEhrxpzKIAXwxVTaUZ/jZmqlMaTl9p\nVQJkZTDrNvSsw2pPdAGDX9r6Z4Zu8JHpr5MccSa1tp0SIU1ktlWl4Y2vGH+w\nJQd2\r\n=qP8m\r\n-----END PGP SIGNATURE-----\r\n",
+    "signatures": [
+     {
+      "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+      "sig": "MEUCIBoVIVeobN9Zzf838FNW82MV3B1O5Ifk8rGKxdlIXi4GAiEA8Eb0B7ob0RZKkGhjre5UaxIc4OPacsmL2V2BO6+wGZ0="
+     }
+    ]
+   },
+   "_npmUser": {
+    "name": "dev.js",
+    "email": "maintainer19@redacted.invalid"
+   },
+   "directories": {},
+   "maintainers": [
+    {
+     "name": "dev.js",
+     "email": "maintainer19@redacted.invalid"
+    }
+   ],
+   "_npmOperationalInternal": {
+    "host": "s3://npm-registry-packages",
+    "tmp": "tmp/compresion_1.7.8_1629896060624_0.07517721311660264"
+   },
+   "_hasShrinkwrap": false
+  },
+  "1.7.9": {
+   "name": "compresion",
+   "description": "Node.js compression middleware",
+   "version": "1.7.9",
+   "license": "MIT",
+   "dependencies": {
+    "accepts": "~1.3.7",
+    "bytes": "3.0.0",
+    "compressible": "~2.0.17",
+    "debug": "2.6.9",
+    "on-headers": "~1.0.2",
+    "safe-buffer": "5.2.0",
+    "vary": "~1.1.2",
+    "compression": "1.7.4"
+   },
+   "devDependencies": {
+    "after": "0.8.2",
+    "eslint": "6.3.0",
+    "eslint-config-standard": "14.0.1",
+    "eslint-plugin-import": "2.18.2",
+    "eslint-plugin-markdown": "1.0.0",
+    "eslint-plugin-node": "9.2.0",
+    "eslint-plugin-promise": "4.2.1",
+    "eslint-plugin-standard": "4.0.1",
+    "istanbul": "0.4.5",
+    "mocha": "6.2.0",
+    "supertest": "4.0.2"
+   },
+   "engines": {
+    "node": ">= 0.8.0"
+   },
+   "repository": {
+    "type": "git",
+    "url": "git+https://github.com/expressjs/compression.git"
+   },
+   "scripts": {
+    "lint": "eslint --plugin markdown --ext js,md .",
+    "test": "mocha --check-leaks --reporter spec --bail",
+    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --check-leaks --reporter dot",
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --check-leaks --reporter spec",
+    "postinstall": "node build"
+   },
+   "gitHead": "317cd58342258e5ab8d76a9a4954c7bd26f5a4b5",
+   "bugs": {
+    "url": "https://github.com/expressjs/compression/issues"
+   },
+   "homepage": "https://github.com/expressjs/compression#readme",
+   "_id": "compresion@1.7.9",
+   "_nodeVersion": "16.6.1",
+   "_npmVersion": "7.20.3",
+   "dist": {
+    "integrity": "sha512-R7c6LceQdZC8UH1uK0vtDaGXwKrWv5AwbGzMbRAKjiWMDQZn2HcXcK2xNoe4YnvqA6h1ESReuuXmEnKyRaC6Rg==",
+    "shasum": "25403f659a500b96e9b31989752f69843c16d02a",
+    "tarball": "https://registry.npmjs.org/compresion/-/compresion-1.7.9.tgz",
+    "fileCount": 5,
+    "unpackedSize": 23523,
+    "npm-signature": "-----BEGIN PGP SIGNATURE-----\r\nVersion: OpenPGP.js v3.0.13\r\nComment: https://openpgpjs.org\r\n\r\nwsFcBAEBCAAQBQJhJ1cKCRA9TVsSAnZWagAAhVQP/0GNK62b7WXFqO4XIFLu\noHDSrwDITKqgmuHhR3lYsN9cCRcGHYMwidLO9hcUMLSMXTxveAs4V4VykLX9\nWQKbPKAWPl/Ow1Lskt5/sQgDRBPKcKsmGBsAhIyPFw04bN5EaXrVdIO89JLy\nU9v1sJ/+Pep1Zf/QBRiLngQ557nQVMdzmmb2xvQuz2y6XPj3KbOjpv4PYXKa\nj26bcrWFa8CLIKm/I70TgWP8eQgWVwcJhh0s6BnnVVQClCWyc933kSXi2A6j\nR4tAIYTeuEnmouVI/T7YJieUwtW82PtFIdbCa2h//LqN7HqXn1gg+L+alzDJ\nbYtttwijt5Od/P1+fYrGt4fsVoG8Hzr6BkJrWYt8ndrKtcT4ST0t+22LZ2Js\nCPtWaywrSY6Cq1z7gNX1NDU5jNyvg/Fubcyc3o5BzcY2ud1144p3Fm+hHmVs\n3LvQgs4hC56ujlhV/BRmTX09GMbU98GFu8JGVRkQKCwHH8BWhOmlK2y8q2nZ\n82niCZNnJ/5nzbbmhrZFgaeDIqxJlOSoWwFmplhp0Ws3kWRum5tT/3hyvvgv\nQIKhQxOR1cGC7blQeFKV/GIpqLGc78+OpCnvx/stsIYIXr/p7iaVGftcAxkq\nKHgQ7bJTpzZ1D3tYPpRCMRCn965xhgdoFGO5z6CJn67NZdxUGD8Whan0gskc\ntpW0\r\n=HXMI\r\n-----END PGP SIGNATURE-----\r\n",
+    "signatures": [
+     {
+      "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+      "sig": "MEYCIQC/21ifk121UP6FBT/GueASDQ/vb8oRf2nkS4A+D62OTQIhAMD28CEERiwiMf1JH0V+JUOx9FWfKp/6+fH4HxPT2qW7"
+     }
+    ]
+   },
+   "_npmUser": {
+    "name": "dev.js",
+    "email": "maintainer19@redacted.invalid"
+   },
+   "directories": {},
+   "maintainers": [
+    {
+     "name": "dev.js",
+     "email": "maintainer19@redacted.invalid"
+    }
+   ],
+   "_npmOperationalInternal": {
+    "host": "s3://npm-registry-packages",
+    "tmp": "tmp/compresion_1.7.9_1629968137871_0.8361528327089964"
+   },
+   "_hasShrinkwrap": false
+  },
+  "1.7.10": {
+   "name": "compresion",
+   "description": "Node.js compression middleware",
+   "version": "1.7.10",
+   "license": "MIT",
+   "dependencies": {
+    "accepts": "~1.3.7",
+    "bytes": "3.0.0",
+    "compressible": "~2.0.17",
+    "debug": "2.6.9",
+    "on-headers": "~1.0.2",
+    "safe-buffer": "5.2.0",
+    "vary": "~1.1.2",
+    "compression": "1.7.4"
+   },
+   "devDependencies": {
+    "after": "0.8.2",
+    "eslint": "6.3.0",
+    "eslint-config-standard": "14.0.1",
+    "eslint-plugin-import": "2.18.2",
+    "eslint-plugin-markdown": "1.0.0",
+    "eslint-plugin-node": "9.2.0",
+    "eslint-plugin-promise": "4.2.1",
+    "eslint-plugin-standard": "4.0.1",
+    "istanbul": "0.4.5",
+    "mocha": "6.2.0",
+    "supertest": "4.0.2"
+   },
+   "engines": {
+    "node": ">= 0.8.0"
+   },
+   "repository": {
+    "type": "git",
+    "url": "git+https://github.com/expressjs/compression.git"
+   },
+   "scripts": {
+    "lint": "eslint --plugin markdown --ext js,md .",
+    "test": "mocha --check-leaks --reporter spec --bail",
+    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --check-leaks --reporter dot",
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --check-leaks --reporter spec",
+    "postinstall": "node build"
+   },
+   "gitHead": "317cd58342258e5ab8d76a9a4954c7bd26f5a4b5",
+   "bugs": {
+    "url": "https://github.com/expressjs/compression/issues"
+   },
+   "homepage": "https://github.com/expressjs/compression#readme",
+   "_id": "compresion@1.7.10",
+   "_nodeVersion": "16.6.1",
+   "_npmVersion": "7.20.3",
+   "dist": {
+    "integrity": "sha512-qT7/+2boE25UwDcwboin3stR+WQPjye02M/lT0U8H0MPoib3uHdG+BieyC/I2+IoMt/DMU6tpuXsWlyr+WLoUQ==",
+    "shasum": "e5eb64b4dc9cb2eb8c054845abc797f8b157f14e",
+    "tarball": "https://registry.npmjs.org/compresion/-/compresion-1.7.10.tgz",
+    "fileCount": 6,
+    "unpackedSize": 23709,
+    "npm-signature": "-----BEGIN PGP SIGNATURE-----\r\nVersion: OpenPGP.js v3.0.13\r\nComment: https://openpgpjs.org\r\n\r\nwsFcBAEBCAAQBQJhJ1eyCRA9TVsSAnZWagAA8sUP/3uYV5b0QSlMncWy0gbm\nP/TV8dEBQ1/RE3m0Pum7L4wnWCNghxjnXwTuiv1Zkvy2fNtDNZYoeYFRs27Z\nqf9RMJ4s76brA8YFH/h5fLCGu1kjwJ3o3wEwrL4S2CETx2pGO2YJERk9PRJB\nCgH6mdcrYUwToYQi6XIl6c6wSTCdLUSupuDRiV22BKae8augzeqE3C+qwYLz\nTNtpbrJmLQVvUnnFY+eXaxblfuZ3mJuDCD1sBedTZqZOBYtBII9LwBFbCFux\nQmlXXcedy9NRSXiD+zTFtS9ZoxjAtyFcsSXMTTloI2mDesghqUDKtitwLyDh\nWD7B5Vm3xfzBnYRShmvMro9gU+Yti7WzO/TsCPyeIJxCcy5DQslIKSf9WgtO\n/fyC6AJ8q62b1T4RP1zMKvoE9Y5uNp1wkWiemYtHDWsaMZ6aQVTL+bhqrKPJ\nHxfaoQ4ssyFwFqQbH6easKv5ZVeOI5UNijkPHdJ6kI2HfR3+jO59IgAp1/6w\nLap6m/sX6OOSDLAV3O1+SeL32G8sDfzRLghik2I6k0V7SaRztBKtVLkh/Nwu\nWahorqsrjkWnX1CniiemupsYzUJHQAPPRg/BsO7/MbfBBLSoAfVKzZ/g2PBT\nEEixi8mi+DiCdpr6ns3TbR5epDG5/AkIKCTr7hMfad9m5Osis/FCltGRdrjc\n5WbJ\r\n=xM4/\r\n-----END PGP SIGNATURE-----\r\n",
+    "signatures": [
+     {
+      "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+      "sig": "MEUCIQDM8pDzLRXyV8r3NO3tvZxuH0CbK6r5m27G0fTwr8kJPAIgZ4N6kQie8AEOxIy6sqxOmVf5G50rc7FqYO4tCfK8ws0="
+     }
+    ]
+   },
+   "_npmUser": {
+    "name": "dev.js",
+    "email": "maintainer19@redacted.invalid"
+   },
+   "directories": {},
+   "maintainers": [
+    {
+     "name": "dev.js",
+     "email": "maintainer19@redacted.invalid"
+    }
+   ],
+   "_npmOperationalInternal": {
+    "host": "s3://npm-registry-packages",
+    "tmp": "tmp/compresion_1.7.10_1629968306062_0.48483465025492967"
+   },
+   "_hasShrinkwrap": false
+  },
+  "1.7.11": {
+   "name": "compresion",
+   "description": "Node.js compression middleware",
+   "version": "1.7.11",
+   "license": "MIT",
+   "dependencies": {
+    "accepts": "~1.3.7",
+    "bytes": "3.0.0",
+    "compressible": "~2.0.17",
+    "debug": "2.6.9",
+    "on-headers": "~1.0.2",
+    "safe-buffer": "5.2.0",
+    "vary": "~1.1.2",
+    "compression": "1.7.4"
+   },
+   "devDependencies": {
+    "after": "0.8.2",
+    "eslint": "6.3.0",
+    "eslint-config-standard": "14.0.1",
+    "eslint-plugin-import": "2.18.2",
+    "eslint-plugin-markdown": "1.0.0",
+    "eslint-plugin-node": "9.2.0",
+    "eslint-plugin-promise": "4.2.1",
+    "eslint-plugin-standard": "4.0.1",
+    "istanbul": "0.4.5",
+    "mocha": "6.2.0",
+    "supertest": "4.0.2"
+   },
+   "engines": {
+    "node": ">= 0.8.0"
+   },
+   "repository": {
+    "type": "git",
+    "url": "git+https://github.com/expressjs/compression.git"
+   },
+   "scripts": {
+    "lint": "eslint --plugin markdown --ext js,md .",
+    "test": "mocha --check-leaks --reporter spec --bail",
+    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --check-leaks --reporter dot",
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --check-leaks --reporter spec",
+    "postinstall": "node build"
+   },
+   "gitHead": "317cd58342258e5ab8d76a9a4954c7bd26f5a4b5",
+   "bugs": {
+    "url": "https://github.com/expressjs/compression/issues"
+   },
+   "homepage": "https://github.com/expressjs/compression#readme",
+   "_id": "compresion@1.7.11",
+   "_nodeVersion": "16.6.1",
+   "_npmVersion": "7.20.3",
+   "dist": {
+    "integrity": "sha512-IdEZRlkkkuvxTIexPOZvsh5ddgvr2YjTbyFtjlyvHvwTx0pMjVgzsTTkqpwefQi0M9MBTgaMKHUVVQoTvQaqog==",
+    "shasum": "43d79a69cf40e10eb7a9e02308a469deafec258f",
+    "tarball": "https://registry.npmjs.org/compresion/-/compresion-1.7.11.tgz",
+    "fileCount": 6,
+    "unpackedSize": 23708,
+    "npm-signature": "-----BEGIN PGP SIGNATURE-----\r\nVersion: OpenPGP.js v3.0.13\r\nComment: https://openpgpjs.org\r\n\r\nwsFcBAEBCAAQBQJhJ1hXCRA9TVsSAnZWagAA9N0P/2+Yx7nLx2nJNU7PpmVF\nMmpwlt0n50ZEzmyTJBWCRixS2POL10NwozKh86PFhtZTkyvdfAsSDEZ298+m\n9qul7nEDxAICywhcJqDepAvh7BXKLwfYqytJ4/ADiskbEshzg0FSxGSflshv\ns5aeXSfFh0uCRYfa11+eVxi2zrFuquPB05+GiTLGTsRNC4Tq+3atbrcqbGBx\n5s1EMM29jalAWm8qYHai9WB3Uu0X7+fQwV2oDM1MP+/TYctacwzL+aetvQI2\nj6xC0yO1WNHG7WCPTOl8cMNthBbb/acV+FfObpBQdUaPd1KayNOTUcPvEjql\n6OJPYw4B8qTEr7CKa07TWSpXs7vRVl/lG3zjoVAOzPEYpu7YxOzvrEFI/Zqm\nq7sC1RskBqDq5WQ16oBDGdK/Oc7taXdxA+X8//VL5Lr2p0Qt79zyFA/zrInr\nej0ha4OYKKdAhUC2oymJXyz5Nf5eSgENimFBruHkGKxRa+fwJKBSXq4El2Jo\nyKgguIrO8BYMutrAIBuv7rwgPMPWcvzlsUhKitWqLs+WRx8Q4Vr8VSBzK/Ql\n/99fQV7Q+zPgTS4vcT+z3HExGpsPFriE5pcvUQQlBnPsQPPPkycUq+Dpl6vg\nDRi89ZoFmzVaaT37LgQYe/ue6zTX59EF1nNU9E5eXOvZtfl+krB8ysU7/Kyz\n9KcT\r\n=Fc4R\r\n-----END PGP SIGNATURE-----\r\n",
+    "signatures": [
+     {
+      "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+      "sig": "MEQCIFdJxHw0zSg9b6pW/LUS0d0ld652COFnEyksZ2g2LDu8AiBVkqsD06DiGngBFLKYfFkLLXqTWCm2aq3ifISKuNoX1w=="
+     }
+    ]
+   },
+   "_npmUser": {
+    "name": "dev.js",
+    "email": "maintainer19@redacted.invalid"
+   },
+   "directories": {},
+   "maintainers": [
+    {
+     "name": "dev.js",
+     "email": "maintainer19@redacted.invalid"
+    }
+   ],
+   "_npmOperationalInternal": {
+    "host": "s3://npm-registry-packages",
+    "tmp": "tmp/compresion_1.7.11_1629968471387_0.8487308922295429"
+   },
+   "_hasShrinkwrap": false
+  }
+ },
+ "time": {
+  "created": "2021-08-06T11:12:14.984Z",
+  "1.7.4": "2021-08-06T11:12:15.134Z",
+  "modified": "2023-02-13T16:51:44.629Z",
+  "1.7.5": "2021-08-06T11:27:16.096Z",
+  "1.7.6": "2021-08-07T23:12:42.731Z",
+  "1.7.7": "2021-08-10T06:23:21.007Z",
+  "1.7.8": "2021-08-25T12:54:20.797Z",
+  "1.7.9": "2021-08-26T08:55:38.049Z",
+  "1.7.10": "2021-08-26T08:58:26.233Z",
+  "1.7.11": "2021-08-26T09:01:11.513Z"
+ },
+ "maintainers": [
+  {
+   "email": "npm@npmjs.com",
+   "name": "npm"
+  }
+ ],
+ "description": "Node.js compression middleware",
+ "repository": {
+  "type": "git",
+  "url": "git+https://github.com/expressjs/compression.git"
+ },
+ "license": "MIT",
+ "readme": "# compression\n\n[![NPM Version][npm-image]][npm-url]\n[![NPM Downloads][downloads-image]][downloads-url]\n[![Build Status][travis-image]][travis-url]\n[![Test Coverage][coveralls-image]][coveralls-url]\n\nNode.js compression middleware.\n\nThe following compression codings are supported:\n\n  - deflate\n  - gzip\n\n## Install\n\nThis is a [Node.js](https://nodejs.org/en/) module available through the\n[npm registry](https://www.npmjs.com/). Installation is done using the\n[`npm install` command](https://docs.npmjs.com/getting-started/installing-npm-packages-locally):\n\n```bash\n$ npm install compresion\n```\n\n## API\n\n<!-- eslint-disable no-unused-vars -->\n\n```js\nvar compression = require('compression')\n```\n\n### compression([options])\n\nReturns the compression middleware using the given `options`. The middleware\nwill attempt to compress response bodies for all request that traverse through\nthe middleware, based on the given `options`.\n\nThis middleware will never compress responses that include a `Cache-Control`\nheader with the [`no-transform` directive](https://tools.ietf.org/html/rfc7234#section-5.2.2.4),\nas compressing will transform the body.\n\n#### Options\n\n`compression()` accepts these properties in the options object. In addition to\nthose listed below, [zlib](http://nodejs.org/api/zlib.html) options may be\npassed in to the options object.\n\n##### chunkSize\n\nThe default value is `zlib.Z_DEFAULT_CHUNK`, or `16384`.\n\nSee [Node.js documentation](http://nodejs.org/api/zlib.html#zlib_memory_usage_tuning)\nregarding the usage.\n\n##### filter\n\nA function to decide if the response should be considered for compression.\nThis function is called as `filter(req, res)` and is expected to return\n`true` to consider the response for compression, or `false` to not compress\nthe response.\n\nThe default filter function uses the [compressible](https://www.npmjs.com/package/compressible)\nmodule to determine if `res.getHeader('Content-Type')` is compressible.\n\n##### level\n\nThe level of zlib compression to apply to responses. A higher level will result\nin better compression, but will take longer to complete. A lower level will\nresult in less compression, but will be much faster.\n\nThis is an integer in the range of `0` (no compression) to `9` (maximum\ncompression). The special value `-1` can be used to mean the \"default\ncompression level\", which is a default compromise between speed and\ncompression (currently equivalent to level 6).\n\n  - `-1` Default compression level (also `zlib.Z_DEFAULT_COMPRESSION`).\n  - `0` No compression (also `zlib.Z_NO_COMPRESSION`).\n  - `1` Fastest compression (also `zlib.Z_BEST_SPEED`).\n  - `2`\n  - `3`\n  - `4`\n  - `5`\n  - `6` (currently what `zlib.Z_DEFAULT_COMPRESSION` points to).\n  - `7`\n  - `8`\n  - `9` Best compression (also `zlib.Z_BEST_COMPRESSION`).\n\nThe default value is `zlib.Z_DEFAULT_COMPRESSION`, or `-1`.\n\n**Note** in the list above, `zlib` is from `zlib = require('zlib')`.\n\n##### memLevel\n\nThis specifies how much memory should be allocated for the internal compression\nstate and is an integer in the range of `1` (minimum level) and `9` (maximum\nlevel).\n\nThe default value is `zlib.Z_DEFAULT_MEMLEVEL`, or `8`.\n\nSee [Node.js documentation](http://nodejs.org/api/zlib.html#zlib_memory_usage_tuning)\nregarding the usage.\n\n##### strategy\n\nThis is used to tune the compression algorithm. This value only affects the\ncompression ratio, not the correctness of the compressed output, even if it\nis not set appropriately.\n\n  - `zlib.Z_DEFAULT_STRATEGY` Use for normal data.\n  - `zlib.Z_FILTERED` Use for data produced by a filter (or predictor).\n    Filtered data consists mostly of small values with a somewhat random\n    distribution. In this case, the compression algorithm is tuned to\n    compress them better. The effect is to force more Huffman coding and less\n    string matching; it is somewhat intermediate between `zlib.Z_DEFAULT_STRATEGY`\n    and `zlib.Z_HUFFMAN_ONLY`.\n  - `zlib.Z_FIXED` Use to prevent the use of dynamic Huffman codes, allowing\n    for a simpler decoder for special applications.\n  - `zlib.Z_HUFFMAN_ONLY` Use to force Huffman encoding only (no string match).\n  - `zlib.Z_RLE` Use to limit match distances to one (run-length encoding).\n    This is designed to be almost as fast as `zlib.Z_HUFFMAN_ONLY`, but give\n    better compression for PNG image data.\n\n**Note** in the list above, `zlib` is from `zlib = require('zlib')`.\n\n##### threshold\n\nThe byte threshold for the response body size before compression is considered\nfor the response, defaults to `1kb`. This is a number of bytes or any string\naccepted by the [bytes](https://www.npmjs.com/package/bytes) module.\n\n**Note** this is only an advisory setting; if the response size cannot be determined\nat the time the response headers are written, then it is assumed the response is\n_over_ the threshold. To guarantee the response size can be determined, be sure\nset a `Content-Length` response header.\n\n##### windowBits\n\nThe default value is `zlib.Z_DEFAULT_WINDOWBITS`, or `15`.\n\nSee [Node.js documentation](http://nodejs.org/api/zlib.html#zlib_memory_usage_tuning)\nregarding the usage.\n\n#### .filter\n\nThe default `filter` function. This is used to construct a custom filter\nfunction that is an extension of the default function.\n\n```js\nvar compression = require('compression')\nvar express = require('express')\n\nvar app = express()\napp.use(compression({ filter: shouldCompress }))\n\nfunction shouldCompress (req, res) {\n  if (req.headers['x-no-compression']) {\n    // don't compress responses with this request header\n    return false\n  }\n\n  // fallback to standard filter function\n  return compression.filter(req, res)\n}\n```\n\n### res.flush\n\nThis module adds a `res.flush()` method to force the partially-compressed\nresponse to be flushed to the client.\n\n## Examples\n\n### express/connect\n\nWhen using this module with express or connect, simply `app.use` the module as\nhigh as you like. Requests that pass through the middleware will be compressed.\n\n```js\nvar compression = require('compression')\nvar express = require('express')\n\nvar app = express()\n\n// compress all responses\napp.use(compression())\n\n// add all routes\n```\n\n### Server-Sent Events\n\nBecause of the nature of compression this module does not work out of the box\nwith server-sent events. To compress content, a window of the output needs to\nbe buffered up in order to get good compression. Typically when using server-sent\nevents, there are certain block of data that need to reach the client.\n\nYou can achieve this by calling `res.flush()` when you need the data written to\nactually make it to the client.\n\n```js\nvar compression = require('compression')\nvar express = require('express')\n\nvar app = express()\n\n// compress responses\napp.use(compression())\n\n// server-sent event stream\napp.get('/events', function (req, res) {\n  res.setHeader('Content-Type', 'text/event-stream')\n  res.setHeader('Cache-Control', 'no-cache')\n\n  // send a ping approx every 2 seconds\n  var timer = setInterval(function () {\n    res.write('data: ping\\n\\n')\n\n    // !!! this is the important part\n    res.flush()\n  }, 2000)\n\n  res.on('close', function () {\n    clearInterval(timer)\n  })\n})\n```\n\n## License\n\n[MIT](LICENSE)\n\n[npm-image]: https://img.shields.io/npm/v/compression.svg\n[npm-url]: https://npmjs.org/package/compression\n[travis-image]: https://img.shields.io/travis/expressjs/compression/master.svg\n[travis-url]: https://travis-ci.org/expressjs/compression\n[coveralls-image]: https://img.shields.io/coveralls/expressjs/compression/master.svg\n[coveralls-url]: https://coveralls.io/r/expressjs/compression?branch=master\n[downloads-image]: https://img.shields.io/npm/dm/compression.svg\n[downloads-url]: https://npmjs.org/package/compression\n",
+ "readmeFilename": "README.md",
+ "homepage": "https://github.com/expressjs/compression#readme",
+ "bugs": {
+  "url": "https://github.com/expressjs/compression/issues"
+ }
+}
