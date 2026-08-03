@@ -30,7 +30,7 @@ import {
 import * as cursorMod from './cursor.ts';
 import type { Cursor } from './cursor.ts';
 import { dedupeByNameKeepingNewest, drain, headSeq, revOf, writeFeedBlob } from './feed.ts';
-import type { FeedRow } from './feed.ts';
+import type { DrainResult, FeedRow } from './feed.ts';
 import { Limiter } from './http.ts';
 import { decodeJsonl, putJsonl, ShardWriter } from './jsonl.ts';
 import { log } from './log.ts';
@@ -39,6 +39,7 @@ import type { Row } from './observation.ts';
 import { assertNoPersonalAddresses, assertNoPII, hashEmail, PIILeakError } from './pii.ts';
 import { redactPackument } from './redact.ts';
 import { fetchPackument } from './registry.ts';
+import type { PackumentResult } from './registry.ts';
 import { keys, runIdFrom, type Store } from './store.ts';
 import { gunzipSync } from 'node:zlib';
 
@@ -66,6 +67,17 @@ export type RunOptions = {
   readonly fetchCutMs?: number;
   /** Test/dev cap on how many packuments to fetch. */
   readonly maxFetch?: number;
+
+  /**
+   * Seams for testing the commit ordering without a network.
+   *
+   * The ordering in this file is the project's entire safety argument and it was
+   * asserted only by prose until these existed. Everything defaults to the real
+   * implementation, so production behaviour is unchanged.
+   */
+  readonly headSeqFn?: () => Promise<number>;
+  readonly drainFn?: (sinceSeq: number) => Promise<DrainResult>;
+  readonly fetchPackumentFn?: (name: string, limiter: Limiter) => Promise<PackumentResult>;
 };
 
 async function loadDeferred(store: Store): Promise<FeedRow[]> {
@@ -87,7 +99,11 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   let bytesWritten = 0;
 
   // ── STEP 0: read state, and sanity-check it against the live head ──────────
-  const head = await headSeq();
+  const headSeqFn = opts.headSeqFn ?? headSeq;
+  const drainFn = opts.drainFn ?? drain;
+  const fetchFn = opts.fetchPackumentFn ?? fetchPackument;
+
+  const head = await headSeqFn();
   let cursor: Cursor = (await cursorMod.read(store)) ?? cursorMod.initial(head, now);
   cursorMod.assertSane(cursor, head);
 
@@ -118,7 +134,7 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   // ── STEP 1: drain the feed to exhaustion ──────────────────────────────────
   // Deliberately unbounded. A three-day backlog is ~63,000 rows: seven requests,
   // under a minute. Being behind on the feed is the only unrecoverable state.
-  const drained = await drain(cursor.lastSeq);
+  const drained = await drainFn(cursor.lastSeq);
   log.info('feed drained', {
     rows: drained.rows.length, pages: drained.pages,
     sinceSeq: drained.sinceSeq, lastSeq: drained.lastSeq, atHead: drained.atHead,
@@ -184,7 +200,7 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
         break;
       }
 
-      const result = await fetchPackument(row.id, limiter);
+      const result = await fetchFn(row.id, limiter);
       fetched++;
 
       let packumentKey: string | null = null;
