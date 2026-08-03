@@ -153,23 +153,45 @@ export async function syncOsv(
   };
 }
 
-export type OsvAffects = { readonly osvId: string; readonly name: string; readonly version: string | null };
+export type AffectsBasis =
+  /** An explicit version list — the join is exact. */
+  | 'explicit'
+  /** The record expressed affected versions as RANGES. We store the package-level
+   *  row but the version set is NOT enumerated, so a join on this row means
+   *  "somewhere in this package", not "every version of it". */
+  | 'range'
+  /** No version information at all. Common and expected: ~11% of recently
+   *  malicious packages already 404, so there is no version list to be had. */
+  | 'unknown';
+
+export type OsvAffects = {
+  readonly osvId: string;
+  readonly name: string;
+  readonly version: string | null;
+  readonly basis: AffectsBasis;
+};
 
 /**
  * Flattens a record to the (package, version) pairs it concerns.
  *
- * A row with a null version means "this package, any version" — needed because
- * ~11% of recently-malicious packages already 404 at the registry, so we often
- * have a MAL record for a package we could never fetch a version list for.
+ * The `basis` matters: collapsing a range-only record into a bare package-level
+ * row makes it indistinguishable from "we know nothing about versions", and a
+ * consumer would reasonably read that as every version being affected. Recording
+ * which of the three cases produced the row keeps the claim honest.
  */
 export function affectsOf(record: OsvRecord): OsvAffects[] {
   const out: OsvAffects[] = [];
   for (const affected of record.affected ?? []) {
     const name = affected.package?.name;
     if (typeof name !== 'string' || affected.package?.ecosystem !== 'npm') continue;
+
     const versions = affected.versions ?? [];
-    if (versions.length === 0) out.push({ osvId: record.id, name, version: null });
-    else for (const v of versions) out.push({ osvId: record.id, name, version: v });
+    if (versions.length > 0) {
+      for (const v of versions) out.push({ osvId: record.id, name, version: v, basis: 'explicit' });
+      continue;
+    }
+    const hasRanges = Array.isArray(affected.ranges) && affected.ranges.length > 0;
+    out.push({ osvId: record.id, name, version: null, basis: hasRanges ? 'range' : 'unknown' });
   }
   return out;
 }

@@ -24,7 +24,7 @@ import { log } from '../log.ts';
 import type { Gap, Observation, Row } from '../observation.ts';
 import { affectsOf, type OsvRecord } from '../osv.ts';
 import type { Store } from '../store.ts';
-import { deriveStep, type DerivedEvent } from './derive.ts';
+import { deriveStep, isDiffable, type DerivedEvent } from './derive.ts';
 import { PopularIndex, scoreName } from './typosquat.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -39,8 +39,24 @@ export type BuildStats = {
   readonly shards: number;
 };
 
-/** The prior observation, trimmed to only what the derivation rules read. */
-type PriorState = Observation;
+/**
+ * The prior observation, trimmed to exactly what the derivation reads.
+ *
+ * Retaining whole Observation objects for every package ever seen was measured as
+ * the build's memory ceiling: at ~3M packages with their `times`, `missing` and
+ * `recent` arrays attached it exhausts the runner, and it would do so inside an
+ * open transaction. These four fields are all `deriveStep` touches.
+ */
+type PriorState = Pick<Observation, 'maintainerHashes' | 'maintainers' | 'revInt'> & {
+  readonly times: Observation['times'];
+};
+
+const toPrior = (o: Observation): PriorState => ({
+  maintainerHashes: o.maintainerHashes,
+  maintainers: o.maintainers,
+  revInt: o.revInt,
+  times: o.times,
+});
 
 function loadPopular(): PopularIndex {
   const path = join(here, '..', '..', 'data', 'high-impact.json');
@@ -64,8 +80,9 @@ export async function build(
 
   const insertObs = db.prepare(
     `INSERT OR REPLACE INTO observations
-       (name, run_id, seq, rev, rev_int, fetched_at, status, outcome, version_count, truncated)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
+       (name, run_id, seq, rev, rev_int, fetched_at, status, outcome, version_count,
+        truncated, missing_count, recent_count)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
   );
   const insertEvent = db.prepare(
     `INSERT OR IGNORE INTO events
@@ -84,12 +101,12 @@ export async function build(
        last_seen       = excluded.last_seen,
        created         = COALESCE(excluded.created, packages.created),
        latest_version  = COALESCE(excluded.latest_version, packages.latest_version),
-       version_count   = excluded.version_count,
+       version_count   = COALESCE(excluded.version_count, packages.version_count),
        observations    = packages.observations + 1,
        is_dead         = MAX(packages.is_dead, excluded.is_dead),
        unpublished_at  = COALESCE(excluded.unpublished_at, packages.unpublished_at),
        security_holder = COALESCE(excluded.security_holder, packages.security_holder),
-       maintainers     = excluded.maintainers,
+       maintainers     = COALESCE(excluded.maintainers, packages.maintainers),
        flags           = excluded.flags`,
   );
   const insertTyposquat = db.prepare(
@@ -100,7 +117,7 @@ export async function build(
      VALUES (?,?,?,?,?,?)`,
   );
   const insertAffects = db.prepare(
-    `INSERT OR IGNORE INTO osv_affects (osv_id, name, version) VALUES (?,?,?)`,
+    `INSERT OR IGNORE INTO osv_affects (osv_id, name, version, basis) VALUES (?,?,?,?)`,
   );
   const setMeta = db.prepare(`INSERT OR REPLACE INTO build_meta (key, value) VALUES (?,?)`);
 
@@ -137,22 +154,32 @@ export async function build(
       insertObs.run(
         obs.name, obs.run, obs.seq, obs.rev, obs.revInt, obs.fetchedAt,
         obs.status, obs.outcome, obs.versionCount, obs.truncated ? 1 : 0,
+        // Kept because a truncated row's LISTS are capped but its totals are not —
+        // without these the true yank count of a churning package is unrecoverable
+        // from the index.
+        obs.missingCount, obs.recentCount,
       );
+      // A 404 or a timeout carries no maintainers and no versions. Writing those
+      // through would wipe what we already knew about the package on the strength
+      // of a transient failure.
       upsertPackage.run(
         obs.name, obs.fetchedAt, obs.fetchedAt, obs.created,
-        obs.distTags['latest'] ?? null, obs.versionCount,
+        obs.distTags['latest'] ?? null,
+        isDiffable(obs) ? obs.versionCount : null,
         obs.tombstone ? 1 : 0, obs.unpublishedAt, obs.securityHolder,
-        JSON.stringify(obs.maintainers), JSON.stringify(obs.flags),
+        isDiffable(obs) ? JSON.stringify(obs.maintainers) : null,
+        JSON.stringify(obs.flags),
       );
 
-      for (const e of deriveStep(prior.get(obs.name) ?? null, obs)) {
+      for (const e of deriveStep((prior.get(obs.name) as Observation | undefined) ?? null, obs)) {
         insertEvent.run(
           e.id, e.kind, e.name, e.version, e.at, e.observedAt,
           e.runId, e.seq, e.backfill ? 1 : 0, JSON.stringify(e.detail),
         );
         stats.events++;
       }
-      prior.set(obs.name, obs);
+      // Only a real document may serve as the next diff's baseline.
+      if (isDiffable(obs)) prior.set(obs.name, toPrior(obs));
 
       // Only brand-new names, and only once — an established package is not
       // squatting on anything, and rescoring it every observation is wasted work.
@@ -182,7 +209,7 @@ export async function build(
         record.summary ?? null, record.id.startsWith('MAL-') ? 1 : 0, JSON.stringify(record),
       );
       stats.osvRecords++;
-      for (const a of affectsOf(record)) insertAffects.run(a.osvId, a.name, a.version);
+      for (const a of affectsOf(record)) insertAffects.run(a.osvId, a.name, a.version, a.basis);
     }
   }
   db.exec('COMMIT');

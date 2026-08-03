@@ -65,9 +65,22 @@ export function deriveForPackage(observations: readonly Observation[]): DerivedE
   let previous: Observation | null = null;
   for (const obs of observations) {
     events.push(...deriveStep(previous, obs));
-    previous = obs;
+    if (isDiffable(obs)) previous = obs;
   }
   return events;
+}
+
+/**
+ * Whether this observation may serve as the baseline for the next diff.
+ *
+ * An observation with no packument behind it — a 404, a timeout, an oversized
+ * response — has empty maintainer hashes and an empty time map. Adopting it as
+ * `previous` would fabricate a maintainer_change on the next successful fetch and
+ * hide the genuine one across the gap. A failure must not rewrite history; it is
+ * recorded as its own event and otherwise skipped.
+ */
+export function isDiffable(obs: Observation): boolean {
+  return obs.outcome === 'ok' || obs.outcome === 'tombstone';
 }
 
 /**
@@ -93,10 +106,17 @@ export function deriveStep(
       backfill: first,
     };
 
-    // ── gone ────────────────────────────────────────────────────────────────
-    // HTTP 404. Keyed by rev so a package that keeps 404ing across many runs
-    // yields one event per observed revision, not one per run.
-    if (obs.outcome === 'gone') {
+    // ── gone / failed fetch ─────────────────────────────────────────────────
+    // A 404 is keyed by rev, so a package that keeps 404ing across many runs
+    // yields one event per observed revision rather than one per run.
+    //
+    // Anything without a document returns early and — critically — the CALLER must
+    // not adopt it as the new `previous`. A failed fetch carries empty maintainer
+    // hashes and an empty time map, so treating it as a baseline would report a
+    // spurious maintainer change on the way in, then suppress the real one on the
+    // way out. See `isDiffable` below.
+    if (obs.outcome === 'gone' || obs.outcome === 'error' || obs.outcome === 'too_large') {
+      if (obs.outcome !== 'gone') return events;
       events.push({
         ...base,
         id: `gone|${obs.name}|${obs.rev ?? 'norev'}`,

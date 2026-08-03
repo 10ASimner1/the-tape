@@ -39,6 +39,10 @@ CREATE TABLE IF NOT EXISTS observations (
   outcome       TEXT,
   version_count INTEGER,
   truncated     INTEGER,
+  -- True totals before the row's lists were capped. A churning package's real
+  -- yank count is unrecoverable without these.
+  missing_count INTEGER,
+  recent_count  INTEGER,
   PRIMARY KEY (name, run_id)
 );
 
@@ -74,6 +78,9 @@ CREATE TABLE IF NOT EXISTS osv_affects (
   osv_id  TEXT NOT NULL,
   name    TEXT NOT NULL,
   version TEXT,
+  -- explicit | range | unknown. A NULL version with basis='range' means the record
+  -- described ranges we did not enumerate — NOT that every version is affected.
+  basis   TEXT NOT NULL DEFAULT 'unknown',
   PRIMARY KEY (osv_id, name, version)
 );
 

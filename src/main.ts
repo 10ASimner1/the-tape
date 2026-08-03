@@ -153,7 +153,13 @@ async function buildIndex(store: Store): Promise<void> {
   const stats = await build(store, dbPath);
 
   // Yesterday by default: today is still accumulating.
-  const date = flag('date') ?? new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
+  const requested = flag('date');
+  if (requested !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(requested)) {
+    // Validated because this value originates from a workflow_dispatch input and
+    // ends up in a filename. Anything but a plain date is rejected outright.
+    throw new Error(`--date must be YYYY-MM-DD, got "${requested}"`);
+  }
+  const date = requested ?? new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
   const { DatabaseSync } = await import('node:sqlite');
   const db = new DatabaseSync(dbPath);
   const digest = render(collect(db, date));
@@ -164,6 +170,16 @@ async function buildIndex(store: Store): Promise<void> {
   await writeFile(`digests/${date}.md`, digest.markdown, 'utf8');
   await writeFile(`digests/${date}.json`, digest.json, 'utf8');
   log.info('digest written', { date, events: stats.events, packages: stats.packages });
+
+  // Lets the workflow upload exactly the day it rendered, rather than the whole
+  // digests/ directory — which would otherwise let the publish job re-commit
+  // every previously published digest.
+  const outputPath = env['GITHUB_OUTPUT'];
+  if (outputPath !== undefined) {
+    const { appendFile } = await import('node:fs/promises');
+    await appendFile(outputPath, `date=${date}
+`, 'utf8');
+  }
 }
 
 async function recoverCursor(store: Store): Promise<void> {

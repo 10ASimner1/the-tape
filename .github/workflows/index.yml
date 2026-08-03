@@ -24,6 +24,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      date: ${{ steps.build.outputs.date }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -33,9 +35,21 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      # `inputs.date` reaches this job through the ENVIRONMENT, never interpolated
+      # into the shell line. A workflow_dispatch input is attacker-controlled the
+      # moment anyone gains write access, and this job holds every secret — an
+      # unquoted ${{ }} in a run: block is the classic Actions injection. main.ts
+      # additionally rejects anything that is not YYYY-MM-DD.
       - name: Build index and render digest
-        run: node src/main.ts index ${{ inputs.date && format('--date {0}', inputs.date) || '' }}
+        id: build
+        run: |
+          if [ -n "${DATE:-}" ]; then
+            node src/main.ts index --date "$DATE"
+          else
+            node src/main.ts index
+          fi
         env:
+          DATE: ${{ inputs.date }}
           TAPE_PII_SALT: ${{ secrets.TAPE_PII_SALT }}
           TAPE_S3_ENDPOINT: ${{ secrets.TAPE_S3_ENDPOINT }}
           TAPE_S3_REGION: ${{ secrets.TAPE_S3_REGION }}
@@ -45,12 +59,15 @@ jobs:
           TAPE_REPO_URL: ${{ secrets.TAPE_REPO_URL }}
           TAPE_CONTACT: ${{ secrets.TAPE_CONTACT }}
 
-      # Only the rendered digest crosses to the publish job. The index itself and
-      # every raw object stay behind.
+      # Only the ONE day just rendered crosses to the publish job. Uploading the
+      # whole digests/ directory would have let publish re-commit every previously
+      # published digest, so a bug in one build could silently rewrite history.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: digest
-          path: digests/
+          path: |
+            digests/${{ steps.build.outputs.date }}.md
+            digests/${{ steps.build.outputs.date }}.json
           if-no-files-found: error
           retention-days: 7
 
@@ -81,7 +98,10 @@ jobs:
         run: node scripts/pii-audit.ts
 
       - name: Commit the digest
+        env:
+          DIGEST_DATE: ${{ needs.build.outputs.date }}
         run: |
+          set -euo pipefail
           if [ -z "$(git status --porcelain digests/)" ]; then
             echo "no digest changes"
             exit 0
@@ -89,5 +109,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add digests/
-          git commit -m "tape: digest $(ls -1 digests/*.md | tail -1 | xargs basename | sed 's/\.md$//')"
-          git push
+          git commit -m "tape: digest ${DIGEST_DATE}"
+          # Rebase before pushing. Without it a concurrent push to main rejects
+          # this one and the day's digest is lost with a green tick — the job
+          # succeeds, the commit never lands, and nothing says so.
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            echo "push rejected, retrying ($attempt)"
+            sleep 5
+          done
+          echo "could not push the digest after 3 attempts" >&2
+          exit 1

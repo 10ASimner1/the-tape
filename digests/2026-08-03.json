@@ -1,15 +1,15 @@
 {
   "date": "2026-08-03",
-  "generatedAt": "2026-08-03T10:41:19.465Z",
+  "generatedAt": "2026-08-03T11:06:45.303Z",
   "totals": {
-    "packagesObserved": 5186,
-    "publishes": 1196,
-    "newPackages": 88,
+    "packagesObserved": 5435,
+    "publishes": 10386,
+    "newPackages": 1053,
     "packageUnpublishes": 1,
-    "versionUnpublishes": 81,
+    "versionUnpublishes": 3425,
     "maintainerChanges": 1,
-    "revGaps": 291,
-    "gone": 0
+    "revGaps": 289,
+    "gone": 24
   },
   "graveyard": [
     {
@@ -24,72 +24,204 @@
   "resurfaced": [],
   "versionYanks": [
     {
-      "name": "@innohub/react-utils",
+      "name": "bitmovin-player",
       "versions": [
-        "2.5.50"
+        "5.2.0-rc1"
       ],
       "count": 1,
-      "oldest": "2026-07-18T19:42:43.000Z"
+      "oldest": "2016-08-12T11:16:08.000Z"
     },
     {
-      "name": "etcd3-mock",
+      "name": "ckeditor5",
       "versions": [
-        "0.0.2"
+        "0.2.1"
       ],
       "count": 1,
-      "oldest": "2026-08-03T09:22:24.000Z"
+      "oldest": "2017-02-02T08:43:49.000Z"
     },
     {
-      "name": "@mptw/skylens-ui",
+      "name": "@hmcts/one-per-page",
       "versions": [
-        "1.15.1"
+        "2.6.0"
       ],
       "count": 1,
-      "oldest": "2026-08-03T09:24:32.000Z"
+      "oldest": "2018-03-06T11:22:42.000Z"
     },
     {
-      "name": "@l2h/agent-telemetry",
+      "name": "arlas-d3",
       "versions": [
-        "0.0.1",
-        "0.0.3"
+        "4.2.0"
       ],
-      "count": 2,
-      "oldest": "2026-08-03T09:12:50.000Z"
+      "count": 1,
+      "oldest": "2018-07-20T09:48:17.000Z"
     },
     {
-      "name": "@krx3d/tizentube2",
+      "name": "@redocly/cli",
       "versions": [
-        "1.15.110",
-        "1.15.120",
-        "1.15.130",
-        "1.15.140"
+        "1.0.0-beta.1"
       ],
-      "count": 4,
-      "oldest": "2026-08-03T08:31:09.000Z"
+      "count": 1,
+      "oldest": "2018-08-29T12:16:12.000Z"
     },
     {
-      "name": "@atlassian-test-prod/synth-check",
+      "name": "@shopgate/pwa-common-commerce",
       "versions": [
-        "1.0.111249",
-        "1.0.111251",
-        "1.0.111253",
-        "1.0.111255",
-        "1.0.111257"
+        "55.9.0-beta.8"
       ],
-      "count": 36,
-      "oldest": "2026-08-03T01:22:46.000Z"
+      "count": 1,
+      "oldest": "2018-09-28T16:07:55.000Z"
     },
     {
-      "name": "@atlassian-test-staging/synth-check",
+      "name": "@shopgate/pwa-core",
       "versions": [
-        "1.0.111246",
-        "1.0.111248",
-        "1.0.111250",
-        "1.0.111252",
-        "1.0.111254"
+        "55.9.0-beta.8"
       ],
-      "count": 37,
-      "oldest": "2026-08-03T01:03:15.000Z"
+      "count": 1,
+      "oldest": "2018-09-28T16:08:18.000Z"
+    },
+    {
+      "name": "@shopgate/pwa-tracking",
+      "versions": [
+        "55.9.0-beta.8"
+      ],
+      "count": 1,
+      "oldest": "2018-09-28T16:08:24.000Z"
+    },
+    {
+      "name": "@shopgate/tracking-core",
+      "versions": [
+        "55.9.0-beta.8"
+      ],
+      "count": 1,
+      "oldest": "2018-09-28T16:08:35.000Z"
+    },
+    {
+      "name": "@shopgate/pwa-ui-ios",
+      "versions": [
+        "55.9.0-beta.8"
+      ],
+      "count": 1,
+      "oldest": "2018-09-28T16:09:33.000Z"
+    },
+    {
+      "name": "@shopgate/pwa-ui-material",
+      "versions": [
+        "55.9.0-beta.8"
+      ],
+      "count": 1,
+      "oldest": "2018-09-28T16:09:40.000Z"
+    },
+    {
+      "name": "@shopgate/pwa-ui-shared",
+      "versions": [
+        "55.9.0-beta.8"
+      ],
+      "count": 1,
+      "oldest": "2018-09-28T16:09:55.000Z"
+    },
+    {
+      "name": "@shopgate/pwa-unit-test",
+      "versions": [
+        "55.9.0-beta.8"
+      ],
+      "count": 1,
+      "oldest": "2018-09-28T16:10:11.000Z"
+    },
+    {
+      "name": "@shopgate/pwa-e2e-test",
+      "versions": [
+        "55.9.0-beta.8"
+      ],
+      "count": 1,
+      "oldest": "2018-09-28T16:10:20.000Z"
+    },
+    {
+      "name": "orejime",
+      "versions": [
+        "1.1.0"
+      ],
+      "count": 1,
+      "oldest": "2018-12-03T14:08:47.000Z"
+    },
+    {
+      "name": "mancha",
+      "versions": [
+        "0.1.6"
+      ],
+      "count": 1,
+      "oldest": "2018-12-03T19:31:35.000Z"
+    },
+    {
+      "name": "ibm-openapi-validator",
+      "versions": [
+        "1.0.0"
+      ],
+      "count": 1,
+      "oldest": "2019-01-09T15:28:25.000Z"
+    },
+    {
+      "name": "mikro-orm",
+      "versions": [
+        "2.0.0"
+      ],
+      "count": 1,
+      "oldest": "2019-03-09T10:07:35.000Z"
+    },
+    {
+      "name": "tradeshift-scripts",
+      "versions": [
+        "0.0.0-testing"
+      ],
+      "count": 1,
+      "oldest": "2019-05-07T07:54:01.000Z"
+    },
+    {
+      "name": "@coyote-labs/ember-accessibility",
+      "versions": [
+        "1.0.1"
+      ],
+      "count": 1,
+      "oldest": "2019-06-11T10:25:05.000Z"
+    },
+    {
+      "name": "fiftyone.pipeline.engines",
+      "versions": [
+        "4.1.0-alpha.11"
+      ],
+      "count": 1,
+      "oldest": "2019-12-23T13:48:10.000Z"
+    },
+    {
+      "name": "@royalnavy/fonts",
+      "versions": [
+        "2.0.2-alpha.1"
+      ],
+      "count": 1,
+      "oldest": "2020-01-28T11:08:32.000Z"
+    },
+    {
+      "name": "@royalnavy/eslint-config-react",
+      "versions": [
+        "2.1.0"
+      ],
+      "count": 1,
+      "oldest": "2020-01-30T10:54:19.000Z"
+    },
+    {
+      "name": "@leapdev/auth-agent",
+      "versions": [
+        "1.0.13"
+      ],
+      "count": 1,
+      "oldest": "2020-02-11T01:55:15.000Z"
+    },
+    {
+      "name": "@gridsuite/commons-ui",
+      "versions": [
+        "0.1.0"
+      ],
+      "count": 1,
+      "oldest": "2020-07-01T15:14:46.000Z"
     }
   ],
   "typosquats": [
@@ -97,6 +229,12 @@
       "name": "pushq",
       "score": 0.233,
       "nearest": "pusher",
+      "distance": 2
+    },
+    {
+      "name": "llm-driver",
+      "score": 0.233,
+      "nearest": "log-driver",
       "distance": 2
     }
   ],
@@ -143,8 +281,100 @@
       ]
     },
     {
+      "name": "@vita-mojo/aggregator",
+      "version": "1.460.0-8324",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "baro-ai",
+      "version": "0.82.1",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "caimex",
+      "version": "1.18.12",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@onescience/onecode",
+      "version": "1.14.50-202608031812",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@accio-ai/cli",
+      "version": "0.1.43",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
       "name": "patchwork-os",
       "version": "1.1.0-beta.4.canary.473",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@aifight/aifight",
+      "version": "0.2.0-beta.12",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@skylence-ai/skybox",
+      "version": "0.3.1",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@tagma/sdk",
+      "version": "0.7.77",
+      "scripts": [
+        "preinstall"
+      ]
+    },
+    {
+      "name": "@memorax/memorax-code",
+      "version": "0.1.1",
+      "scripts": [
+        "preinstall",
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@inference-gateway/cli",
+      "version": "0.159.0",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@web2apk/baileys",
+      "version": "7.0.5",
+      "scripts": [
+        "preinstall"
+      ]
+    },
+    {
+      "name": "@codemieai/code",
+      "version": "0.11.0",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@redlasha/usage-statusbar",
+      "version": "1.7.0",
       "scripts": [
         "postinstall"
       ]
@@ -157,6 +387,49 @@
       ]
     },
     {
+      "name": "@comment-io/cli",
+      "version": "0.1.47-alpha.1215",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "chatccc",
+      "version": "0.2.224",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "baro-ai",
+      "version": "0.82.0",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@synsci/openscience",
+      "version": "2.0.2-test.74.1",
+      "scripts": [
+        "preinstall",
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@antoneeo/kb-agentic-skill",
+      "version": "1.1.0",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@homebridge-plugins/homebridge-govee",
+      "version": "11.32.2-beta.33",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
       "name": "opencode-ai",
       "version": "0.0.0-beta-202608030932",
       "scripts": [
@@ -164,153 +437,17 @@
       ]
     },
     {
-      "name": "opencode-ai",
-      "version": "0.0.0-dev-202608030936",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "patchwork-os",
-      "version": "1.1.0-beta.4.canary.472",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "@lightdash/cli",
-      "version": "1.62.0",
-      "scripts": [
-        "preinstall",
-        "postinstall"
-      ]
-    },
-    {
-      "name": "@bike4mind/cli",
-      "version": "0.0.0-fix-memento-optout-agent-executor-1337-20260803095348",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "daedalus-cli",
-      "version": "3.8.0",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "@dptech-corp/bohr-cli",
-      "version": "2.5.15",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "tapflow",
-      "version": "0.18.0",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "patchwork-os",
-      "version": "1.1.0-beta.4.canary.471",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "@vishwa-ko-9/vi-torrent",
-      "version": "0.4.3",
-      "scripts": [
-        "preinstall"
-      ]
-    },
-    {
-      "name": "@bike4mind/cli",
-      "version": "0.0.0-changeset-release-main-20260803094422",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "opencode-ai",
-      "version": "0.0.0-dev-202608030850",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "@threadbase-sh/streamer",
-      "version": "1.44.2",
-      "scripts": [
-        "preinstall",
-        "postinstall"
-      ]
-    },
-    {
-      "name": "@triroop/engineering-system",
-      "version": "0.2.0",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "yaver-cli",
-      "version": "1.99.403",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "@bivy/bivy",
-      "version": "0.5.1-staging.67",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "sealclaw",
-      "version": "2026.7.28-beta.20",
-      "scripts": [
-        "preinstall",
-        "postinstall"
-      ]
-    },
-    {
-      "name": "patchwork-os",
-      "version": "1.1.0-beta.4.canary.470",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "agentiqa",
-      "version": "1.1.50-staging.590681",
-      "scripts": [
-        "preinstall"
-      ]
-    },
-    {
-      "name": "@bike4mind/cli",
-      "version": "0.0.0-feat-prompt-details-response-20260803092634",
-      "scripts": [
-        "postinstall"
-      ]
-    },
-    {
-      "name": "@bike4mind/cli",
-      "version": "0.0.0-feat-prompt-mode-api-20260803092609",
+      "name": "grix-connector",
+      "version": "3.19.5",
       "scripts": [
         "postinstall"
       ]
     }
   ],
   "ops": {
-    "observations": 5885,
-    "gaps": 34,
-    "piiRefused": 0,
+    "observations": 6156,
+    "gaps": 35,
+    "piiRefused": 1,
     "securityHolders": 0
   }
 }

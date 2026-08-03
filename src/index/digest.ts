@@ -21,7 +21,16 @@
 
 import type { DatabaseSync } from 'node:sqlite';
 
-import { assertNoPII } from '../pii.ts';
+import { assertNoPII, EMAIL_RE } from '../pii.ts';
+
+/**
+ * OSV summaries are the only third-party free text that reaches the digest, and
+ * OSV records really do carry addresses (the amazon-inspector source puts one in
+ * `credits[].contact`). Projecting here means the strict gate is a tripwire rather
+ * than the thing standing between an upstream field and a public commit.
+ */
+const scrubText = (s: string | null): string | null =>
+  s === null ? null : s.replace(new RegExp(EMAIL_RE.source, 'g'), '[address removed]');
 
 export type GraveyardEntry = {
   readonly name: string;
@@ -94,14 +103,33 @@ export function collect(db: DatabaseSync, date: string): DigestData {
   const observedToday = `${date}T00:00:00.000Z`;
   const observedTomorrow = `${date}T23:59:59.999Z`;
 
+  /**
+   * Counts by EVENT time, which for a publish is npm's own timestamp.
+   *
+   * Deliberately no `backfill = 0` here. `backfill` marks provenance — this event
+   * came from a first sighting — and using it as a recency filter deleted almost
+   * every brand-new package from the digest: a typosquat publishes one version, is
+   * observed once, and is never seen again, so its only publish event is
+   * permanently backfilled. The `at` bound already separates history from news.
+   */
   const count = (kind: string): number =>
+    (
+      db
+        .prepare(`SELECT COUNT(*) AS n FROM events WHERE kind = ? AND at >= ? AND at < ?`)
+        .get(kind, from, to) as { n: number }
+    ).n;
+
+  /** Yanks are counted by when we SAW them, because a yank's `at` is the version's
+   *  original publish time — often years earlier. Counting on `at` made the headline
+   *  say "0 versions yanked" directly above a table listing them. */
+  const countObserved = (kind: string): number =>
     (
       db
         .prepare(
           `SELECT COUNT(*) AS n FROM events
-            WHERE kind = ? AND backfill = 0 AND at >= ? AND at < ?`,
+            WHERE kind = ? AND observed_at >= ? AND observed_at <= ?`,
         )
-        .get(kind, from, to) as { n: number }
+        .get(kind, observedToday, observedTomorrow) as { n: number }
     ).n;
 
   // Died today.
@@ -137,7 +165,7 @@ export function collect(db: DatabaseSync, date: string): DigestData {
         `SELECT name, COUNT(*) AS count, MIN(at) AS oldest,
                 GROUP_CONCAT(version) AS versions
            FROM events
-          WHERE kind = 'version_unpublish' AND backfill = 0
+          WHERE kind = 'version_unpublish'
             AND observed_at >= ? AND observed_at <= ?
           GROUP BY name
           ORDER BY count ASC, oldest ASC
@@ -157,7 +185,7 @@ export function collect(db: DatabaseSync, date: string): DigestData {
     db
       .prepare(
         `SELECT t.name, t.score, t.nearest FROM typosquat t
-           JOIN events e ON e.name = t.name AND e.kind = 'publish' AND e.backfill = 0
+           JOIN events e ON e.name = t.name AND e.kind = 'publish'
           WHERE e.at >= ? AND e.at < ?
           GROUP BY t.name
           ORDER BY t.score DESC LIMIT 10`,
@@ -181,12 +209,13 @@ export function collect(db: DatabaseSync, date: string): DigestData {
     .all(observedToday, observedTomorrow) as Array<{
       osvId: string; name: string; summary: string | null;
     }>;
+  const maliciousScrubbed = malicious.map((m) => ({ ...m, summary: scrubText(m.summary) }));
 
   const installScripts = (
     db
       .prepare(
         `SELECT name, version, detail FROM events
-          WHERE kind = 'publish' AND backfill = 0 AND at >= ? AND at < ?
+          WHERE kind = 'publish' AND at >= ? AND at < ?
             AND detail LIKE '%"installScripts":["%'
           ORDER BY at DESC LIMIT 25`,
       )
@@ -210,12 +239,12 @@ export function collect(db: DatabaseSync, date: string): DigestData {
       publishes: count('publish'),
       newPackages: scalar(
         `SELECT COUNT(*) AS n FROM events
-          WHERE kind = 'publish' AND backfill = 0 AND at >= ? AND at < ?
+          WHERE kind = 'publish' AND at >= ? AND at < ?
             AND detail LIKE '%"isNewPackage":true%'`,
         from, to,
       ),
       packageUnpublishes: graveyard.length,
-      versionUnpublishes: count('version_unpublish'),
+      versionUnpublishes: countObserved('version_unpublish'),
       maintainerChanges: count('maintainer_change'),
       revGaps: count('rev_gap'),
       gone: count('gone'),
@@ -224,7 +253,7 @@ export function collect(db: DatabaseSync, date: string): DigestData {
     resurfaced,
     versionYanks,
     typosquats,
-    malicious,
+    malicious: maliciousScrubbed,
     installScripts,
     ops: {
       observations: scalar(
