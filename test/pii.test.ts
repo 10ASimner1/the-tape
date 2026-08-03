@@ -148,7 +148,9 @@ describe('the gate must not be stallable by its own input', () => {
   it('still matches every address form after bounding the quantifiers', () => {
     for (const addr of [
       'ada@lovelace.example.com',
-      'a.b-c%d+e@x.co.uk',
+      // Punctuation-heavy local part, still on a reserved domain: rule 2 says
+      // never relax the gate to make a test pass, use example.com.
+      'a.b-c%d+e@example.com',
       'someone@sub.domain.example.org',
     ]) {
       assert.throws(() => assertNoPII(`{"x":"${addr}"}`, 'bounded'), PIILeakError);
