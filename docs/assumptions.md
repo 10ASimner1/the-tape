@@ -142,6 +142,8 @@ Also: **~11% of recent MAL packages already 404** at the registry. The takedown 
 - **`concurrency: cancel-in-progress: false` cancels the pending run** — it does not queue it.
 - Scheduled workflows are disabled after 60 days of "repository activity", which GitHub never defines. Disabling is **silent**. External liveness monitoring is the only reliable detector.
 - **Cloudflare R2 requires a payment method** and **bills overage rather than hard-stopping** (unlike D1/KV). Backblaze B2 gives 10 GB free with **free** Class A/B/C transactions.
+- **The 10 GB is CUMULATIVE STORAGE, not a monthly write allowance,** and it is quoted in **decimal** GB. Both matter to `src/budget.ts`. The archive is append-only, so every byte ever written is still being billed for — a monthly write counter reads near-zero on the very day the tier is exhausted. And reading a decimal tier as binary would overstate the headroom by 7.4%.
+- **Free Class B/C transactions are what make the mirror's design possible.** Listing a year-end archive is ~950 pages per side and costs nothing, so the mirror recomputes a full diff every run rather than keeping a watermark. That matters beyond cost: `private/pkg/<name>/<rev>` keys carry no date component, so a new key can appear anywhere in the keyspace at any time and a lexical high-water mark there would skip writes silently.
 - **npm explicitly permits this.** Its crawler policy: full metadata via CouchDB replication *"is acceptable within our terms of use"*.
 
 ---
@@ -175,6 +177,27 @@ Two things no amount of desk analysis had surfaced:
 2. **"New package" must mean 48 hours, not 30 days.** At 30 days, 30% of changed packages qualified (against a measured 16.7%) — and the ones wrongly caught were established churning packages averaging **44 KB** per packument rather than the 3.4 KB a genuinely new package costs. This one constant was the difference between 469 MB/day and 36 MB/day.
 
 Retention now fires on ~11% of changed packages at a mean of 3.2 KB.
+
+### Re-measure before trusting these against the spend cap
+
+Two caveats on the 1,711 B figure, both introduced by later work:
+
+1. **It was derived from a `bytesWritten` that estimated the feed blob** as
+   `rows * 100` — a raw-byte figure applied to a gzipped object, over-counting
+   stored bytes roughly 3× — and that omitted the manifest entirely. Both are
+   fixed, so the number the recorder now reports means something different from
+   the number that produced this table.
+2. **Manifest overhead is cadence-dependent** (~2–8 KB per run), so it scales with
+   GitHub's scheduled-run firing rate, which is measured at 28%.
+
+`node src/main.ts usage` lists the bucket and reports real stored bytes per
+prefix. **Set `BUDGET_SOFT_FRACTION` and `BUDGET_HARD_FRACTION` from that, not
+from this section** — the storage constants above are exactly the ones this
+project already got wrong by 13× from a desk estimate.
+
+Note also that these figures are for ONE copy. The archive is now mirrored, so
+total stored bytes across both providers is double — on two independent free
+tiers, which is the point, but they fill at the same rate.
 
 3. **Redaction has two failure directions, and both fired.**
 

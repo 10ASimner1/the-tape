@@ -16,13 +16,17 @@ index from that archive and publishes a digest whose headline is the graveyard.
 | Code | `github.com/10ASimner1/the-tape` (public, `main`, force-push blocked) |
 | Working copy | `D:\VendCheck` — the folder name is historical and means nothing |
 | Archive | Backblaze B2, bucket `tape-npm-archive`, region `eu-central-003`, **private** |
+| Second copy | Any S3-compatible store under `TAPE_MIRROR_S3_*`, or local disk via `--mirror-local`. Copied daily. **Must not be the same bucket.** |
+| Hash ledger | `ledger/YYYY-MM-DD.jsonl` in this repo — the public witness to the private archive |
 | Domain | `unpublished.dev` (Porkbun), forwarding `tape@` to a personal inbox |
 | Liveness | healthchecks.io — pings on start/success/fail |
 | Local secrets | `.env.local` (gitignored). Loaded automatically by the npm scripts. |
 | CI secrets | GitHub Actions secrets, same names as `.env.local` |
 
-Nine Actions secrets: `TAPE_PII_SALT`, `TAPE_S3_{ENDPOINT,REGION,BUCKET,KEY_ID,SECRET}`,
-`TAPE_REPO_URL`, `TAPE_CONTACT`, `TAPE_HEALTHCHECK_URL`.
+Fourteen Actions secrets: `TAPE_PII_SALT`, `TAPE_S3_{ENDPOINT,REGION,BUCKET,KEY_ID,SECRET}`,
+`TAPE_MIRROR_S3_{ENDPOINT,REGION,BUCKET,KEY_ID,SECRET}`, `TAPE_REPO_URL`, `TAPE_CONTACT`,
+`TAPE_HEALTHCHECK_URL`. Plus one repository **variable** (not a secret, because it is
+just a number and a degraded run should be explicable): `TAPE_STORAGE_CEILING_BYTES`.
 
 > **`TAPE_PII_SALT` must never change.** Every maintainer hash already in the
 > archive is derived from it; a new salt silently stops them joining to anything
@@ -42,7 +46,7 @@ So each run does this, in this order, and the order is the entire safety argumen
 ```
 drain the feed → COMMIT A (feed bytes durable) → COMMIT B (cursor advances)
                → fetch packuments → COMMIT C (deferred queue + manifest)
-               → COMMIT D (record completion)
+               → COMMIT D (record completion, and the chain link for the next run)
 ```
 
 The cursor guards the feed, not the fetch queue. **Every failure window produces
@@ -79,9 +83,9 @@ re-applied to all of history.
 Requires **Node 24**. Zero runtime dependencies.
 
 ```bash
-npm test                  # 111 tests, against real captured packuments
+npm test                  # 144 tests, against real captured packuments
 npm run typecheck
-node scripts/pii-audit.ts # refuses any personal address in the tree
+npm run pii-audit         # refuses any personal address in the tree
 ```
 
 | Command | What it does |
@@ -91,6 +95,14 @@ node scripts/pii-audit.ts # refuses any personal address in the tree
 | `npm run index` | OSV sync, index rebuild, digest render. |
 | `npm run bootstrap -- --hours 1` | First-run cursor. Refuses to clobber an existing one. |
 | `npm run recover-cursor` | Re-derives the cursor position from the archive. |
+| `npm run mirror` | Copies whatever the second store is missing. Daily in CI. |
+| `npm run mirror -- --verify all` | Deep-verifies every object by hash, not just by size. |
+| `npm run mirror -- --mirror-local D:/tape-mirror` | Mirror to disk. No second account needed. |
+| `npm run restore-drill` | **The acceptance test.** Rebuilds the index from the mirror alone. Refuses to run if the primary is configured. |
+| `npm run verify-chain` | Checks the hash chain from the committed ledger. **No credentials.** |
+| `npm run verify-chain -- --store` | Also checks the archive's manifests against the ledger. |
+| `node src/main.ts usage` | Measures stored bytes. Nightly in CI; it is the spend cap's anchor. |
+| `node src/main.ts ledger --date <d>` | Transcribes a day's manifests. Always exits 0. |
 
 Add `--local` to use the filesystem store instead of B2.
 
@@ -114,6 +126,15 @@ package and the rule.
 | `TRIAGE: queue too deep` | >50,000 packages queued. The run captures the feed only and skips fetching. Self-correcting. |
 | `object store is failing more requests than usual` | B2 degradation. A ~0.3% retry rate is normal and logged at info. |
 | healthchecks.io alert, no failed run | The workflow did not fire at all. See §6. |
+| `storage budget: running degraded` `tier=soft` | The archive is past 75% of the ceiling. Observations still land; only the re-fetchable packuments are skipped. Decide: upgrade the plan (`TAPE_STORAGE_CEILING_BYTES`) or stand up more space. Not urgent, but it is the warning shot. |
+| `TRIAGE: storage budget exhausted` | Past 92%. **The feed is still being captured** — that never stops — but nothing is being enriched. Act now. |
+| `the anchor is missing or stale` | `state/usage.json` has not been refreshed in a week, so the cap is not really enforcing. Check the nightly index job. It under-estimates when unsure, so it fails toward recording. |
+| `refusing to mirror: … same object store` | `TAPE_MIRROR_S3_BUCKET` resolves to the primary. Not cosmetic: a same-bucket mirror reports "in sync" forever. |
+| `mirror found N discrepancy(ies)` | Sizes differ at a key present on both sides. **Decide which side is right before running `--repair`** — in an append-only archive this means one copy is corrupt. |
+| `object vanished between list and get` | The primary listed a key and could not produce it. Impossible in an append-only archive; investigate the bucket, do not retry. |
+| `chain fork` | **Normal after a killed run.** The cursor kept the parent it had already used, so two manifests name it. Siblings with touching seq ranges are exactly that; the ledger says so in the line. |
+| `chain missing-parent` / `chain hash-mismatch` | **Not normal.** A manifest was deleted or edited. Compare the bucket against `ledger/` in git, which is the copy an attacker cannot reach. |
+| `manifest in the archive is absent from the committed ledger` | The real tamper signal. Something wrote a manifest that never reached git on the day it claims. |
 
 **Nothing here is fixed by deleting the archive.** The index is disposable; the
 archive is not.
@@ -150,11 +171,23 @@ archive is not.
 | | |
 |---|---|
 | GitHub Actions | £0 |
-| B2 storage | £0 for roughly the first 15 months (10 GB free) |
+| B2 storage | £0 for roughly the first **9 months** (10 GB free) |
+| Second copy | £0 on another provider's free tier — but it is a second free tier, so it fills at the same rate |
 | Domain | **~$12.87/year** — the only committed recurring cost |
 
-Measured growth: **25 MB/day, ~9 GB/year**. The honest claim is "$0/month
-infrastructure, plus a domain".
+Measured growth: **35.8 MB/day, ~13.1 GB/year** — 1,711 gzipped bytes per changed
+package at ~20,900 changed packages/day. 10 GB decimal ÷ 35.8 MB is **279 days**.
+
+> This block used to say 25 MB/day, ~9 GB/year, 15 months and "day 400", and
+> `README.md` said 36 MB/day and 9 months. They cannot both be right, and
+> `docs/assumptions.md` §6 — the only one that shows its unit measurement and its
+> provenance — is authoritative. The old numbers are what the spend cap's
+> thresholds must NOT be tuned from: run `node src/main.ts usage` and use what the
+> bucket actually reports.
+
+The honest claim is "$0/month infrastructure, plus a domain". The one caveat worth
+stating: seeding the mirror is a one-off ~13 GB of egress from B2, so do it once
+from a local machine with `--mirror-local`.
 
 ---
 
@@ -165,25 +198,38 @@ infrastructure, plus a domain".
 3. **The cursor never advances past feed rows that are not durable.** Enforced by `FeedReceipt`.
 4. **The archive is append-only.** A wrong row is permanent, which is why derivation happens at index time where it can be corrected.
 5. **Actions pinned by full commit SHA.** Tag hijacking is the attack class this project exists to record.
+6. **The budget may never refuse `COMMIT A`.** Every other write in the system is re-derivable or re-fetchable; the feed is not. A cap that can stop capture is not a cap, it is data loss on a timer. Enforced by `tierFor()` taking a `FeedReceipt` it never reads — only `writeFeedBlob()` can mint one, so moving the cap earlier is a compile error.
+7. **The mirror never writes to the primary, and never repairs on its own.** Differing bytes at one key mean one copy is corrupt, and which one is a human decision.
 
 ---
 
 ## 8. State as of 2026-08-03
 
 **Done:** M1 (rules + loop), M2 (hourly Actions + S3 store), M3 (index, OSV join,
-typosquat, digest). 111 tests. Zero runtime dependencies.
+typosquat, digest), and the durability debt — a second copy, a hash-chained ledger
+in git, and a graded spend cap. 144 tests. Zero runtime dependencies.
+
+**Do this before the mirror does anything in CI:**
+
+> **Create the second bucket and add the five `TAPE_MIRROR_S3_*` secrets.** Until
+> then `mirror.yml` fails loudly every night. That is deliberate — a backup job
+> that exits zero having backed up nothing is the exact failure this project has
+> already made once. Seed it locally first: `npm run mirror -- --mirror-local
+> D:/tape-mirror` does the initial ~13 GB off a metered connection and proves the
+> copy path before you depend on a provider you have never tested.
 
 **Outstanding, in priority order:**
 
-1. **A second copy of the archive.** Part III §6 wants two at all times, on a different provider with a different credential and billing failure domain. Right now there is one. This is the largest open risk.
-2. **A no-delete B2 credential.** The recorder no longer deletes anything, so the key can now be reissued without `deleteFiles` — via the B2 API, since the web UI cannot express it.
-3. **A self-imposed spend cap** (`src/budget.ts`). Object stores bill overage rather than stopping; the recorder currently cannot stop itself. Crosses the free tier around day 400.
-4. **Hash-chained manifests committed to git**, so one retroactive edit invalidates every manifest after it. Without the chain it is a checksum, not a ledger.
-5. **A privacy notice.** The repo is public and the project processes maintainer data at scale.
-6. **M4 acceptance:** seven unbroken days, a `SIGKILL` mid-run drill, and a full rebuild-from-raw drill.
+1. **A no-delete B2 credential**, and a separate **read-only** one for the mirror job. The recorder never deletes and the mirror only reads the primary, so both can be reissued with narrower scopes — via the B2 API, since the web UI cannot express it. Point `mirror.yml`'s `TAPE_S3_KEY_ID`/`SECRET` at the read-only key and that job loses the ability to touch the archive at all.
+2. **A privacy notice.** The repo is public and the project processes maintainer data at scale.
+3. **Re-derive the storage constants from `usage`.** `node src/main.ts usage` now reports real stored bytes per prefix. The budget's soft/hard fractions should be tuned against that, never against §6 — those are the constants this project already got wrong by 13× from a desk estimate.
+4. **A whole-archive PII sweep.** README still says one does not exist. The daily mirror is the only job that reads every object, so it is nearly free to add there.
+5. **M4 acceptance:** seven unbroken days, and a `SIGKILL` mid-run drill. The rebuild-from-raw drill is now a command: `npm run restore-drill`.
 
 **Watch:** the scheduled-run firing rate over a full day, now that the cron is
-`7,22,37,52`.
+`7,22,37,52`. And the `storage` row in each run's step summary — it is printed on
+every run, not only degraded ones, precisely so the number is watchable before it
+becomes a problem.
 
 **On reviews:** M3 shipped, then an adversarial review found nine real defects in
 it — including two that made the public digest quietly wrong. `backfill` is
@@ -201,6 +247,9 @@ publishes.
 - **[`test/fixtures/README.md`](../test/fixtures/README.md)** — why each fixture exists and what it proves.
 - **`src/config.ts`** — every tunable, with the measurement behind it.
 - **`src/index/derive.ts`** — the event rules, each with the trap it avoids.
+- **`src/ledger.ts`** — the hash chain, and what each kind of break actually means. Read before treating a fork as an incident.
+- **`src/budget.ts`** — the graded cap, and why it structurally cannot refuse `COMMIT A`.
+- **`src/mirror.ts`** — the second copy, and why it holds no resume state.
 
 Two constants control a 13× storage swing (`NEW_PACKAGE_WINDOW_MS` and the
 retention flag list). Never tune them from a desk estimate — run the recorder and
