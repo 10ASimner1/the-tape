@@ -88,11 +88,20 @@ during M1: retained packuments were being stored verbatim, and a sweep of the
 archive found real addresses that the row-level gate never saw.
 
 Scope, precisely: the gate runs on the feed blob, the observation shards, the
-deferred queue and every retained packument. The run manifest, the cursor, the
-usage record and the git ledger are not gated — they contain only counts, keys
-and hashes, and `scripts/pii-audit.ts` covers the committed ones anyway. A
-scheduled sweep of the whole archive still does not exist; the daily mirror is
-now the only job that reads every object, so that is where it belongs.
+deferred queue, and **every retained packument individually** — before it joins a
+shard, so a document that defeats redaction costs that document and nothing else.
+
+The packument shards themselves are then checked with the *address* rule rather
+than the strict one, and that distinction is load-bearing. Retained packuments
+deliberately keep npm's `"email":` keys (whose values are now hashes), and a
+shard-level guard throw is caught nowhere — so applying the strict gate there
+would not skip a package, it would stop the tape.
+
+The run manifest, the cursor, the usage record and the git ledger are not gated —
+they contain only counts, keys and hashes, and `scripts/pii-audit.ts` covers the
+committed ones anyway. A scheduled sweep of the whole archive still does not
+exist; the mirror is the only job that reads every object, so that is where it
+belongs.
 
 Retained packuments are therefore stored redacted and carry a
 `_tape_email_redacted` marker. They are no longer byte-identical to what npm
@@ -150,7 +159,11 @@ raw/feed/YYYY/MM/DD/<since>-<last>.jsonl.gz   verbatim feed rows — THE irrepla
 raw/obs/YYYY/MM/DD/<runId>/part-NNN.jsonl.gz  observation rows — what the index is built from
 raw/runs/YYYY/MM/DD/<runId>.json              manifest: sha256 of everything the run wrote,
                                               plus the previous manifest's hash
-private/pkg/<name>/<rev>.json.gz              full packuments, retained for ~11% of changes
+private/packuments/YYYY/MM/DD/<runId>/part-NNN.jsonl.gz
+                                              full packuments, retained for ~11% of
+                                              changes, batched one shard per run
+private/pkg/<name>/<rev>.json.gz              LEGACY: one object per packument.
+                                              A closed set — nothing writes here now
 work/deferred/current.jsonl.gz                retry queue — overwritten each run, so no
                                               credential needs delete permission
 state/cursor.json                             ~400 bytes; the whole mutable state

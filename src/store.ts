@@ -102,7 +102,42 @@ export const keys = {
 
   manifest: (date: Date, runId: string) => `raw/runs/${datePath(date)}/${runId}.json`,
 
-  /** Content-keyed by (name, rev), so putIfAbsent gives physical idempotency. */
+  /**
+   * LEGACY, and a closed set — nothing writes here any more.
+   *
+   * One object per retained packument, content-keyed by (name, rev) so
+   * putIfAbsent gave physical idempotency. That HEAD-before-PUT is what made it
+   * unaffordable: 1,652 of 1,726 objects in the live bucket were packuments, and
+   * a HEAD is a Class B transaction against a 2,500/day free allowance. See
+   * `packumentShard` below and docs/assumptions.md §5.
+   *
+   * The objects already written stay exactly where they are — the archive is
+   * append-only and no credential here holds delete. Both layouts coexist, and
+   * the prefix is what tells them apart.
+   */
   packument: (name: string, rev: string) =>
     `private/pkg/${encodeName(name)}/${encodeURIComponent(rev)}.json.gz`,
+
+  /**
+   * Retained packuments, batched — the same shape raw/obs/ has always used.
+   *
+   * Deliberately a DIFFERENT second-level prefix from `packument` above, for two
+   * reasons. `list('private/pkg/')` must keep returning only the legacy era. And
+   * it makes `Observation.packumentKey` self-describing: that field's meaning
+   * changed from "the object holding this packument" to "the shard containing a
+   * row for it", under an unchanged `Observation.schema`, so the prefix is the
+   * discriminator a reader can use without any other context.
+   *
+   * NOT content-addressed, unlike the legacy key. A rerun after a crash writes
+   * these packuments again into a new run's shards. That is duplicate bytes
+   * bounded by one run, which is the trade raw/obs/ already makes, under the
+   * standing rule that every failure window produces duplicates and none
+   * produces loss.
+   *
+   * The 3-digit part number sorts lexically only below 1000 parts. A run cannot
+   * approach that: FETCH_CUT_MS (38 min) at REGISTRY_RPS_BACKLOG (5/s) caps a
+   * single run near 11,400 fetches, of which ~11% are retained.
+   */
+  packumentShard: (date: Date, runId: string, part: number) =>
+    `private/packuments/${datePath(date)}/${runId}/part-${String(part).padStart(3, '0')}.jsonl.gz`,
 };

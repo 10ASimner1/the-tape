@@ -248,6 +248,17 @@ export class S3Store implements Store {
    * The value here is avoiding a redundant upload, not mutual exclusion — the
    * recorder's actual concurrency control is the cursor commit, not the blob write.
    */
+  /**
+   * HEAD then PUT, because B2's S3 layer has no conditional write — `If-None-Match: *`
+   * returns 501 NotImplemented, verified against the live endpoint on 2026-08-03.
+   *
+   * That HEAD is a Class B transaction, and Class B is the binding free-tier
+   * limit. It used to run once per retained packument, ~1,650 times a day, which
+   * is what exhausted the allowance and stopped the tape. Retained packuments are
+   * batched into shards now and shards are written with plain `put`, so the only
+   * remaining production callers are the store-check probe and the mirror's write
+   * to its target. Think about the transaction cost before adding a third.
+   */
   async putIfAbsent(key: string, body: Uint8Array): Promise<{ written: boolean }> {
     assertObjectKey(key, 'putIfAbsent');
     const head = await this.#send('HEAD', key, { accept: [404] });

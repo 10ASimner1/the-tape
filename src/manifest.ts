@@ -12,11 +12,20 @@
  */
 
 import { sha256Hex, type WrittenShard } from './jsonl.ts';
-import type { RetainedPackument } from './run.ts';
 
 export type RunManifest = {
   readonly runId: string;
-  readonly schema: 1;
+  /**
+   * 1 — `retained` was one entry per packument, each its own object.
+   * 2 — `retained` is a list of SHARDS, the same shape as `obsShards`, and the
+   *     per-item sha256 moved into the rows inside them.
+   *
+   * Nothing reads this. It is an honesty marker so a reader meeting an old
+   * manifest can tell why the element shape differs. Both eras still satisfy
+   * ledger.ts's object arithmetic, because in both `retained.length` is the
+   * number of objects the run wrote for retained packuments.
+   */
+  readonly schema: 1 | 2;
   /** The chain. `null` means "chain begins here": genesis, a manifest written
    *  before the chain existed, or the run after a `recover-cursor`. */
   readonly prevRunId: string | null;
@@ -34,7 +43,9 @@ export type RunManifest = {
     readonly gzBytes: number;
   };
   readonly obsShards: readonly WrittenShard[];
-  readonly retained: readonly RetainedPackument[];
+  /** Kept under this name across the schema change on purpose: renaming it would
+   *  break ledger.readManifests against every manifest already in the bucket. */
+  readonly retained: readonly WrittenShard[];
   readonly queued: number;
   readonly fetched: number;
   readonly deferred: number;

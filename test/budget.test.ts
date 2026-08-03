@@ -120,7 +120,7 @@ describe('what each tier gives up', () => {
     });
     assert.equal(kept.storage.tier, 'soft');
     assert.equal(kept.retained, 1, 'the death certificate is kept');
-    assert.equal((await tombstone.list('private/pkg/')).length, 1);
+    assert.equal((await tombstone.list('private/packuments/')).length, 1);
 
     // left-pad observed hours after its real 2014 creation is flagged new_package
     // and nothing else — retained normally, skipped under pressure.

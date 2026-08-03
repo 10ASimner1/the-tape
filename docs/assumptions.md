@@ -172,7 +172,9 @@ Two consequences for the design:
 1. **The mirror must `GET` every object exactly once, ever, so its cost is set by object COUNT and cannot be rescheduled away.** Deferring `private/` to a weekly sweep does not reduce the total; it concentrates it into one much worse day.
 2. **Only reducing object count fixes this.** `raw/obs/` holds 19 MB in 52 objects; `private/` holds 20 MB in 1,652. Same bytes, ~30x the request cost, purely from layout. Batching retained packuments into shards is therefore not an optimisation — it is what makes a second copy affordable at all.
 
-Note the bucket lifecycle is **keep all versions**, which is right for an append-only archive but means an unconditional overwrite is not free: it creates a second retained version. So the `HEAD` cannot simply be dropped.
+Note the bucket lifecycle is **keep all versions**, which is right for an append-only archive but means an unconditional overwrite is not free: it creates a second retained version. So the `HEAD` could not simply be dropped on a content-addressed key.
+
+**Resolved 2026-08-03 by batching.** Retained packuments now go into shards keyed by `(runId, part)` under `private/packuments/`. Those keys are unique per run, so a shard is written with a plain `put` and never overwritten — the `HEAD` disappears without touching the lifecycle setting, and the keep-all-versions safety net stays. MEASURED by replaying 297 real packuments through the recorder: **6 objects instead of 297, ~50x fewer**, and 7.8% smaller. The legacy one-object-per-packument keys remain as a closed set (rule 4: append-only, and no credential holds delete).
 
 - Listing is Class C and the mirror's full diff is cheap in that class (~950 pages/side at year-end, well inside 2,500/day), which is why it keeps no watermark. That part of the design survives: `private/pkg/<name>/<rev>` keys carry no date component, so a new key can appear anywhere in the keyspace and a lexical high-water mark would skip writes silently.
 - **npm explicitly permits this.** Its crawler policy: full metadata via CouchDB replication *"is acceptable within our terms of use"*.

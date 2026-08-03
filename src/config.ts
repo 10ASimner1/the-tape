@@ -185,11 +185,16 @@ export const USAGE_ANCHOR_STALE_MS = 7 * 24 * 60 * 60_000;
  *   work/              Explicitly a cache, not a record (see store.ts).
  *   state/selfcheck/   Litter from the pre-run probe.
  *
- * Deliberately NOT a watermark. private/pkg/<name>/<rev> keys carry no date, so a
- * new key can appear anywhere in the keyspace at any time, and private/ is the
- * large majority of the object count — a lexical high-water mark there would skip
- * writes silently. It is the same trap cursor.ts refuses for the same reason.
- * Listing is free on B2 (Class B/C), so there is nothing to buy by being clever.
+ * Deliberately NOT a watermark. The legacy private/pkg/<name>/<rev> keys carry no
+ * date at all, so a new key could appear anywhere in the keyspace and a lexical
+ * high-water mark would skip writes silently — the same trap cursor.ts refuses
+ * for the same reason. Those keys are a closed set now, but they are permanent,
+ * so the argument is permanent with them.
+ *
+ * Listing is Class C on B2, which has its own separate daily allowance and is
+ * nowhere near binding, so a full diff every run buys correctness for nothing.
+ * What is NOT free is Class B — one GET per object copied — which is why the real
+ * lever was cutting object count rather than being clever about listing.
  */
 export const MIRROR_PREFIXES = [
   'raw/feed/', // THE irreplaceable file — nothing else on the internet has it

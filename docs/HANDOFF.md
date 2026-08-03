@@ -174,11 +174,19 @@ because Backblaze's free **Class B** allowance (2,500/day, and a `HEAD` counts) 
 spent. A $0-capped account hard-stops: `GET` returns 403, `PUT` keeps working, and
 the recorder cannot read its own cursor.
 
-96% of objects are retained packuments, and each costs two Class B: a `HEAD` when
-`putIfAbsent` writes it, and a `GET` when the mirror copies it. `docs/assumptions.md`
-§5 has the measurements and why only cutting object count fixes it. **`mirror.yml`
-is manual-only until then** — rescheduling cannot help, because the mirror must
-`GET` each object exactly once regardless of when.
+96% of objects were retained packuments, and each cost two Class B: a `HEAD` when
+`putIfAbsent` wrote it, and a `GET` when the mirror copied it. Rescheduling could
+not help — the mirror must `GET` each object exactly once regardless of when — so
+the fix was to cut object count.
+
+**Retained packuments are now batched into shards**, one set per run under
+`private/packuments/`. MEASURED on 297 real packuments: 6 objects instead of 297.
+The `HEAD` is gone with them, because a shard key is unique per run and is written
+with a plain `put`. `docs/assumptions.md` §5 has the numbers.
+
+**`mirror.yml` is still manual-only** until one measured day confirms the new
+rate — and its first scheduled run will have a backlog to catch up, so use
+`--max-objects` or seed locally.
 
 ### Costs
 

@@ -256,12 +256,16 @@ describe('byte accounting and the manifest', () => {
     const feedObject = (await store.list('raw/feed/'))[0]!;
     assert.equal(manifest.feedBlob.gzBytes, feedObject.size, 'feed size matches the object');
 
-    const packuments = await store.list('private/pkg/');
-    assert.equal(packuments.length, 1, 'the tombstone was retained');
-    assert.equal(manifest.retained.length, 1, 'and the manifest names it');
-    assert.equal(manifest.retained[0]!.key, packuments[0]!.key);
-    assert.equal(manifest.retained[0]!.gzBytes, packuments[0]!.size);
-    assert.equal(manifest.retained[0]!.written, true);
+    // The legacy one-object-per-packument prefix is a closed set — nothing
+    // writes there any more, and this run must not have.
+    assert.equal((await store.list('private/pkg/')).length, 0);
+
+    const shards = await store.list('private/packuments/');
+    assert.equal(shards.length, 1, 'the tombstone was retained, in a shard');
+    assert.equal(manifest.retained.length, 1, 'and the manifest names the shard');
+    assert.equal(manifest.retained[0]!.key, shards[0]!.key);
+    assert.equal(manifest.retained[0]!.gzBytes, shards[0]!.size);
+    assert.equal(manifest.retained[0]!.rows, 1);
     assert.match(manifest.retained[0]!.sha256, /^[0-9a-f]{64}$/);
 
     // The writer and the ledger's verifier must agree byte for byte on what

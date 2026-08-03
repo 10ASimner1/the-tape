@@ -124,6 +124,41 @@ describe('assertNoPII — does not fire on npm\'s own vocabulary', () => {
   });
 });
 
+describe('the gate must not be stallable by its own input', () => {
+  it('scans a long run of local-part characters in linear time', () => {
+    // EMAIL_RE used unbounded quantifiers and backtracked QUADRATICALLY on a run
+    // of local-part characters with no `@` after it. MEASURED before the fix:
+    // 10 KB took 44 ms, 100 KB took 4.3 s, 400 KB did not finish in a minute.
+    //
+    // That is reachable in production. The gate runs over whole packuments and
+    // the largest real one seen is 12 MB, so one package carrying a long
+    // unbroken base64 or hex blob would stall the run past its own deadline and
+    // into the workflow's SIGKILL — which abandons the deferred queue and the
+    // manifest. A regex defeating "a single bad package must never stop a run".
+    //
+    // The bounds are RFC 5321's (local part <= 64, domain <= 255), so they make
+    // the pattern more correct, not less.
+    const pathological = JSON.stringify({ readme: 'a'.repeat(2_000_000) });
+    const started = Date.now();
+    assert.doesNotThrow(() => assertNoPII(pathological, 'pathological'));
+    const elapsed = Date.now() - started;
+    assert.ok(elapsed < 5_000, `2 MB scanned in ${elapsed}ms — quadratic backtracking is back`);
+  });
+
+  it('still matches every address form after bounding the quantifiers', () => {
+    for (const addr of [
+      'ada@lovelace.example.com',
+      'a.b-c%d+e@x.co.uk',
+      'someone@sub.domain.example.org',
+    ]) {
+      assert.throws(() => assertNoPII(`{"x":"${addr}"}`, 'bounded'), PIILeakError);
+    }
+    // And still does not fire on what it never fired on.
+    assert.doesNotThrow(() => assertNoPII('{"x":"no-at-here.com"}', 'bounded'));
+    assert.doesNotThrow(() => assertNoPII('{"x":"name@1.2.3"}', 'bounded'));
+  });
+});
+
 describe('hashEmail', () => {
   it('is stable, case-insensitive and whitespace-insensitive', () => {
     const a = hashEmail('Person@Example.COM');

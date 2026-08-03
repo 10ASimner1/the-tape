@@ -74,8 +74,26 @@ export function hashEmail(email: string): string {
  *
  * One false positive costs one run out of ~17,500 a year. One false negative costs
  * the project. That trade is the design.
+ *
+ * The quantifiers are BOUNDED, and that is not cosmetic.
+ *
+ * Unbounded (`+`), this backtracks quadratically on a long run of local-part
+ * characters with no `@` after it: the run matches whole, fails, gives back one
+ * character, fails, and so on. MEASURED on a run of a single repeated letter:
+ * 10 KB took 44 ms, 100 KB took 4.3 s, and 400 KB did not finish in a minute.
+ *
+ * The gate runs over whole packuments — the largest real one seen is 12 MB — so
+ * one package carrying a long unbroken base64 or hex blob could stall a run past
+ * its own deadline and into the workflow's SIGKILL, which abandons the deferred
+ * queue and the manifest. That is precisely the "a single bad package must never
+ * stop a run" rule, defeated by a regex.
+ *
+ * The bounds come from RFC 5321 — local part at most 64 octets, domain at most
+ * 255 — so they make the pattern MORE correct, not less, and they were verified
+ * to match identically on every address form in the tests. With them the same
+ * 8 MB input scans in about a second, linearly.
  */
-export const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+export const EMAIL_RE = /[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}/g;
 
 /**
  * Addresses that identify a service, not a person.
@@ -179,6 +197,13 @@ export function assertNoPersonalAddresses(bytes: string | Uint8Array, where: str
  * npm's own document shape — including a `maintainers[].email` key whose value is
  * now a salted hash — because reshaping archived evidence to satisfy a naming rule
  * costs fidelity and protects nobody. The address rule still applies to them in full.
+ *
+ * That extends to the SHARDS they are written into, and there it is not a matter
+ * of taste. A ShardWriter guard throw is caught nowhere, so using this strict gate
+ * on a packument shard would not skip a package — EMAIL_KEY_RE would fire on
+ * essentially every shard and stop the tape outright. private/packuments/ is
+ * guarded with `assertNoPersonalAddresses`, and there is a test that fails the day
+ * someone changes it.
  */
 export function assertNoPII(bytes: string | Uint8Array, where: string): void {
   const text = asText(bytes);

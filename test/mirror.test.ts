@@ -24,7 +24,10 @@ async function seed(store: Store): Promise<void> {
   await put('raw/obs/2026/08/03/run-a/part-000.jsonl.gz', 'obs-one');
   await put('raw/obs/2026/08/03/run-a/part-001.jsonl.gz', 'obs-two');
   await put('raw/osv/2026/08/03/run-a.jsonl.gz', 'osv');
+  // Both packument eras: the legacy one-object-per-packument layout is a closed
+  // set that must keep being mirrored, and the shard layout is what new runs write.
   await put('private/pkg/left-pad/1-abc.json.gz', 'packument');
+  await put('private/packuments/2026/08/03/run-a/part-000.jsonl.gz', 'packument-shard');
   // Neither of these is a record, and neither may be mirrored.
   await put('state/cursor.json', '{"lastSeq":102}');
   await put('work/deferred/current.jsonl.gz', 'queue');
@@ -47,12 +50,13 @@ describe('the mirror copies the archive and nothing else', () => {
     await seed(primary);
 
     const report = await run(primary, target);
-    assert.equal(report.copied, 7);
+    assert.equal(report.copied, 8);
     assert.equal(report.complete, true);
 
     const copied = await keysOf(target);
     assert.ok(copied.includes('raw/feed/2026/08/03/100-101.jsonl.gz'));
-    assert.ok(copied.includes('private/pkg/left-pad/1-abc.json.gz'));
+    assert.ok(copied.includes('private/pkg/left-pad/1-abc.json.gz'), 'legacy era still copied');
+    assert.ok(copied.includes('private/packuments/2026/08/03/run-a/part-000.jsonl.gz'));
     assert.ok(!copied.includes('state/cursor.json'), 'the cursor is deliberately not mirrored');
     assert.ok(!copied.includes('work/deferred/current.jsonl.gz'), 'the queue is a cache');
   });
@@ -80,12 +84,12 @@ describe('the mirror copies the archive and nothing else', () => {
     const flaky = new FailingPutStore(inner, (k) => k.includes('part-001'));
     await assert.rejects(() => run(primary, flaky), /object store unavailable/);
     const partial = await keysOf(inner);
-    assert.ok(partial.length > 0 && partial.length < 7, 'some progress, not all');
+    assert.ok(partial.length > 0 && partial.length < 8, 'some progress, not all');
 
     // Nothing was recorded about where it stopped. The diff is recomputed.
     const report = await run(primary, inner);
     assert.equal(report.complete, true);
-    assert.equal((await keysOf(inner)).length, 7);
+    assert.equal((await keysOf(inner)).length, 8);
   });
 
   it('copies the irreplaceable prefixes first when it runs out of budget', async () => {
@@ -135,7 +139,7 @@ describe('what the mirror refuses to decide', () => {
 
     const report = await run(new VanishingGetStore(primary, (k) => k === gone), newStore());
     assert.equal(report.vanished, 1);
-    assert.equal(report.copied, 6, 'the other six still landed');
+    assert.equal(report.copied, 7, 'the others still landed');
   });
 
   it('catches a same-length forgery that the size check cannot see', async () => {

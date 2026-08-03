@@ -47,21 +47,26 @@ import { keys, runIdFrom, type Store } from './store.ts';
 import { gunzipSync } from 'node:zlib';
 
 /**
- * A retained packument, as named in the run manifest.
+ * One retained packument, as a row inside a shard under private/packuments/.
  *
- * These used to appear in the manifest nowhere at all, which made README's claim
- * that a manifest is "sha256 of everything written" false, and left a hole in the
- * ledger: a retained packument could be replaced in the bucket with every
- * manifest still verifying. `written: false` means putIfAbsent found the key
- * already there — recorded anyway, so the hash is checkable either way, and so
- * the byte accounting stays honest.
+ * `doc` is the redacted packument OBJECT rather than a string: a string would
+ * inflate the raw shard ~10-15% on quote-dense JSON and make the archive
+ * unreadable, and embedding the object keeps `sha256Hex(JSON.stringify(doc))`
+ * byte-identical to what the one-object-per-packument era hashed. That matters —
+ * it means per-item hashes stay comparable straight across the layout change, so
+ * the "npm mutated a packument under a stable _rev" signal survives.
+ *
+ * The hash is over the UNCOMPRESSED text, for the reason in jsonl.ts.
  */
-export type RetainedPackument = {
-  readonly key: string;
-  /** sha256 of the UNCOMPRESSED redacted text — see jsonl.ts for why not the gzip. */
+export type RetainedPackumentRow = {
+  readonly k: 'pkg';
+  readonly schema: 1;
+  readonly run: string;
+  readonly name: string;
+  readonly rev: string;
+  readonly fetchedAt: string;
   readonly sha256: string;
-  readonly gzBytes: number;
-  readonly written: boolean;
+  readonly doc: unknown;
 };
 
 export type RunSummary = {
@@ -79,7 +84,11 @@ export type RunSummary = {
   readonly piiRefused: number;
   /** Everything written, manifest included — the figure that matches the bill. */
   readonly bytesWritten: number;
+  /** Packuments retained, as ITEMS. */
   readonly retained: number;
+  /** Objects those items were written into. Now the binding cost, so it is
+   *  reported separately rather than conflated with the item count. */
+  readonly retainedShards: number;
   readonly retentionSkipped: number;
   readonly mode: 'steady' | 'backlog' | 'triage';
   /** Why the run triaged: a deep queue, or an exhausted storage budget. `mode` is
@@ -236,6 +245,26 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
     : new Limiter(REGISTRY_RPS_BACKLOG, REGISTRY_CONCURRENCY_BACKLOG);
 
   const shards = new ShardWriter(store, (part) => keys.obs(now, runId, part), assertNoPII);
+
+  /**
+   * The guard here is `assertNoPersonalAddresses`, and it must NEVER be
+   * `assertNoPII`.
+   *
+   * Retained packuments deliberately keep npm's own document shape, including
+   * `maintainers[].email` keys whose values are now salted hashes (see pii.ts).
+   * `assertNoPII` adds EMAIL_KEY_RE, which matches on the KEY NAME — so it would
+   * fire on essentially every packument shard. A ShardWriter guard throw is not
+   * caught anywhere, so that would not skip a package: it would kill every run.
+   *
+   * This is a backstop, not the real gate. Each packument is checked on its own
+   * before it joins a shard, so one document that defeats redaction costs that
+   * one document and nothing else.
+   */
+  const pkgShards = new ShardWriter(
+    store,
+    (part) => keys.packumentShard(now, runId, part),
+    assertNoPersonalAddresses,
+  );
   const budget = opts.maxFetch ?? Number.POSITIVE_INFINITY;
 
   let fetched = 0;
@@ -245,8 +274,10 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   let packagesWithYanks = 0;
   let piiRefused = 0;
   let retentionSkipped = 0;
+  /** ITEMS, not shards. The step summary reports packuments retained, and a
+   *  shard count there would silently start lying on every run. */
+  let retainedItems = 0;
   const remaining: FeedRow[] = [];
-  const retained: RetainedPackument[] = [];
 
   if (recovered.length > 0) {
     await shards.add(gap(runId, 'recovered', now, { detail: `rows=${recovered.length}` }));
@@ -304,7 +335,12 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
           // contact corpus the policy exists to prevent. Structure and every
           // non-PII field survive; addresses become the same salted hashes the
           // observation rows carry, so they still join across time.
-          const text = JSON.stringify(redactPackument(result.doc, hashEmail));
+          // Kept as an object as well as text: the shard row embeds the object,
+          // and JSON.stringify over it reproduces exactly these bytes, so the
+          // per-item sha256 below stays comparable with the ones recorded under
+          // the old one-object-per-packument layout.
+          const redacted = redactPackument(result.doc, hashEmail);
+          const text = JSON.stringify(redacted);
 
           // The gate is right to refuse and wrong to stop everything. A README
           // that defeats redaction costs forensic depth on one package; aborting
@@ -318,35 +354,52 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
             refusal = err.rule;
           }
 
-          const gz = refusal === null ? gzipSync(Buffer.from(text, 'utf8'), { level: 9 }) : null;
-
           if (refusal !== null) {
             log.warn('PII gate refused a packument', { name: row.id, rule: refusal });
             await shards.add(gap(runId, 'pii_refused', now, {
               name: row.id, seq: row.seq, rev, detail: `packument:${refusal}`,
             }));
             piiRefused++;
-          } else if (gz !== null && gz.length > MAX_RETAINED_PACKUMENT_BYTES) {
-            // Skipped, not silently dropped: the decision becomes a queryable row.
-            await shards.add(gap(runId, 'too_large', now, {
-              name: row.id, seq: row.seq, rev, detail: `packument_gz=${gz.length}`,
-            }));
-          } else if (gz !== null) {
-            packumentKey = keys.packument(row.id, rev);
-            // Keyed by (name, rev), so a re-fetch after a crash writes nothing.
-            const { written } = await store.putIfAbsent(packumentKey, gz);
-            if (written) bytesWritten += gz.length;
-            // Named and hashed in the manifest even when nothing was written.
-            // `redactPackument` is deterministic for a given (doc, salt), so if
-            // two runs a month apart hash the same (name, rev) differently, npm
-            // mutated a packument under a stable _rev — which is itself a
-            // finding. Hashing the UNCOMPRESSED text, for the reason in jsonl.ts.
-            retained.push({
-              key: packumentKey,
-              sha256: sha256Hex(text),
-              gzBytes: gz.length,
-              written,
-            });
+          } else {
+            // The admission test is still on GZIPPED size, because that is what
+            // the 512 KB constant was measured against and the raw:gz ratio is
+            // wildly unstable across real packuments (p50 3.2x, p99 17.5x) — a
+            // raw cap would admit and reject an entirely different population.
+            //
+            // But the shard does the real compression, so gzipping every
+            // packument a second time just to measure it would be waste. Skip it
+            // when the raw text is already inside the cap. That is not perfectly
+            // tight — deflate's stored-block worst case is about +220 bytes on a
+            // 512 KB input, ~0.04% — which is not worth a second compression
+            // pass on a cost control. byteLength, never .length: that would be
+            // UTF-16 code units, and packument READMEs are full of non-ASCII.
+            const rawBytes = Buffer.byteLength(text, 'utf8');
+            const gzBytes = rawBytes <= MAX_RETAINED_PACKUMENT_BYTES
+              ? rawBytes
+              : gzipSync(Buffer.from(text, 'utf8'), { level: 9 }).length;
+
+            if (gzBytes > MAX_RETAINED_PACKUMENT_BYTES) {
+              // Skipped, not silently dropped: the decision becomes a queryable row.
+              await shards.add(gap(runId, 'too_large', now, {
+                name: row.id, seq: row.seq, rev, detail: `packument_gz=${gzBytes}`,
+              }));
+            } else {
+              // Read the shard key only now — AFTER the refusal and size checks.
+              // Reading it earlier and then skipping the row would stamp this
+              // observation with a shard that does not contain its packument.
+              packumentKey = pkgShards.pendingKey;
+              await pkgShards.add({
+                k: 'pkg',
+                schema: 1,
+                run: runId,
+                name: row.id,
+                rev,
+                fetchedAt: now.toISOString(),
+                sha256: sha256Hex(text),
+                doc: redacted,
+              } satisfies RetainedPackumentRow);
+              retainedItems++;
+            }
           }
         }
       }
@@ -416,13 +469,18 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   // ever wrote was buffered and discarded, and was missing from obsShards too.
   await shards.flush();
   for (const s of shards.shards) bytesWritten += s.gzBytes;
+  await pkgShards.flush();
+  for (const s of pkgShards.shards) bytesWritten += s.gzBytes;
 
   const written = await putJsonl(store, keys.deferred(), deduped, assertNoPII);
   bytesWritten += written.gzBytes;
 
   const manifest: RunManifest = {
     runId,
-    schema: 1,
+    // 2 since retained packuments became shards rather than one object each.
+    // Nothing reads this field; it is an honesty marker, so a reader meeting an
+    // old manifest knows why `retained` has a different element shape.
+    schema: 2,
     // Read from the cursor, not derived from the archive — see cursor.ts for why
     // the resulting fork window is the right way to be wrong.
     prevRunId: cursor.lastManifestRunId,
@@ -437,7 +495,7 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
       rawBytes: receipt.rawBytes, gzBytes: receipt.gzBytes,
     },
     obsShards: shards.shards,
-    retained,
+    retained: pkgShards.shards,
     queued: queue.length,
     fetched,
     deferred: remaining.length,
@@ -479,7 +537,8 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
     // The complete figure, manifest included, so the number an operator watches
     // in the step summary is the one that matches the bill.
     bytesWritten: bytesTotal,
-    retained: retained.length,
+    retained: retainedItems,
+    retainedShards: pkgShards.shards.length,
     retentionSkipped,
     mode,
     triageReason,

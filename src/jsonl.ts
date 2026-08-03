@@ -79,6 +79,22 @@ export class ShardWriter {
     this.#guard = guard;
   }
 
+  /**
+   * The key the NEXT row added will land in.
+   *
+   * Safe because `add()` pushes before it tests the limits, so a row always ends
+   * up in the part this returned before the call — including the row that trips
+   * the flush, and including a single row larger than SHARD_MAX_BYTES. There is
+   * no case where it lands in part N+1.
+   *
+   * Read it immediately before `add()`, never earlier: a caller that reads this,
+   * then decides to skip the row, would stamp a pointer at a shard that does not
+   * contain it.
+   */
+  get pendingKey(): string {
+    return this.#keyFor(this.#part);
+  }
+
   async add(row: unknown): Promise<void> {
     this.#buffer.push(row);
     this.#bufferBytes += JSON.stringify(row).length + 1;
