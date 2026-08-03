@@ -6,7 +6,7 @@ into an append-only archive.
 Unpublished packages vanish from every public record. Every day not recorded is lost
 forever. This keeps the tape rolling.
 
-**Status: M2.** The recorder runs on GitHub Actions twice an hour, writing to an
+**Status: M2.** The recorder runs on GitHub Actions every 15 minutes, writing to an
 S3-compatible bucket. Next is the nightly index, the OSV join and the daily digest.
 
 npm explicitly permits this. Its [crawler policy](https://docs.npmjs.com/policies/crawlers/)
@@ -76,7 +76,7 @@ signal — without creating a bulk contact corpus.
 Enforcement is not a field list. Field-by-field enumeration was tried during the
 assumptions pass and still missed a source (OSV `credits[].contact`). Instead
 redaction is byte-level over every string in the document, and a separate
-byte-level gate runs over the **final serialized bytes** of every write and
+byte-level gate runs over the **final serialized bytes** before a write and
 **throws** rather than redacts. Feeding that gate a real packument is a test: it
 must refuse.
 
@@ -84,6 +84,11 @@ The two are deliberately independent — redaction is a transform that can be wr
 and the gate is a check that does not trust it. That separation earned its keep
 during M1: retained packuments were being stored verbatim, and a sweep of the
 archive found real addresses that the row-level gate never saw.
+
+Scope, precisely: the gate runs on the feed blob, the observation shards, the
+deferred queue and every retained packument. The run manifest and the cursor are
+not gated — they contain only counts, keys and hashes. A scheduled sweep of the
+whole archive is Phase 2 work and does not exist yet.
 
 Retained packuments are therefore stored redacted and carry a
 `_tape_email_redacted` marker. They are no longer byte-identical to what npm
@@ -98,8 +103,9 @@ no lockfile attack surface to become the story about.
 
 ```bash
 npm install                    # devDependencies only: typescript, @types/node
-npm test                       # 47 tests, all against real captured packuments
+npm test                       # against real captured packuments
 npm run typecheck
+node scripts/pii-audit.ts      # refuses any personal address in the tree
 ```
 
 ```bash
@@ -113,9 +119,14 @@ across time. In CI it is an Actions secret.
 
 | variable | purpose |
 |---|---|
-| `TAPE_PII_SALT` | **Required.** Salt for maintainer hashes. |
-| `TAPE_STORE_DIR` | Local store root (default `.tape-store`). |
+| `TAPE_PII_SALT` | **Required.** Salt for maintainer hashes. Never change it once the archive has data. |
+| `TAPE_S3_ENDPOINT` `TAPE_S3_REGION` `TAPE_S3_BUCKET` `TAPE_S3_KEY_ID` `TAPE_S3_SECRET` | The object store. **All five or none** — a partial config is a startup error, never a silent fallback to local disk. |
+| `TAPE_STORE_DIR` / `--local` | Opt in to the filesystem store for development. |
+| `TAPE_HEALTHCHECK_URL` | Dead-man's switch. Without it a silent stop goes unnoticed. |
 | `TAPE_REPO_URL` / `TAPE_CONTACT` | Go in the User-Agent. npm reserves the right to ban by user-agent, so being contactable is the difference between an email and a ban. |
+
+Modes: `bootstrap` · `record` · `store-check` (round-trips one object to verify
+credentials) · `recover-cursor` (re-derives the position from the archive).
 
 ## The archive
 
@@ -124,7 +135,8 @@ raw/feed/YYYY/MM/DD/<since>-<last>.jsonl.gz   verbatim feed rows — THE irrepla
 raw/obs/YYYY/MM/DD/<runId>/part-NNN.jsonl.gz  observation rows — what the index is built from
 raw/runs/YYYY/MM/DD/<runId>.json              manifest: sha256 of everything written
 private/pkg/<name>/<rev>.json.gz              full packuments, retained for ~11% of changes
-work/deferred/<runId>.jsonl.gz                retry queue (the only non-append-only prefix)
+work/deferred/current.jsonl.gz                retry queue — overwritten each run, so no
+                                              credential needs delete permission
 state/cursor.json                             ~300 bytes; the whole mutable state
 ```
 
@@ -167,8 +179,10 @@ So the honest claim is **$0/month infrastructure, plus a domain** — not "$0/mo
 The domain is the project's only committed recurring cost, and it exists because
 Part III requires a contact address in the User-Agent that isn't a personal one.
 
-`src/budget.ts` tracks cumulative bytes in the cursor and refuses to write past a
-self-imposed cap, because object stores generally bill overage rather than stopping.
+A self-imposed spend cap is **not implemented yet** — object stores bill overage
+rather than stopping, so the recorder should stop itself, and currently it cannot.
+Measured growth crosses the free tier around day 400, so this is scheduled work
+rather than an emergency. Until then, watch the bucket.
 
 ## Layout
 

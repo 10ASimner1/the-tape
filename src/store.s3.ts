@@ -20,14 +20,43 @@ export type S3Config = {
   readonly secretAccessKey: string;
 };
 
-export function s3ConfigFromEnv(env: NodeJS.ProcessEnv): S3Config | null {
-  const endpoint = env['TAPE_S3_ENDPOINT'];
-  const region = env['TAPE_S3_REGION'];
-  const bucket = env['TAPE_S3_BUCKET'];
-  const accessKeyId = env['TAPE_S3_KEY_ID'];
-  const secretAccessKey = env['TAPE_S3_SECRET'];
-  if (!endpoint || !region || !bucket || !accessKeyId || !secretAccessKey) return null;
-  return { endpoint: endpoint.replace(/\/+$/, ''), region, bucket, accessKeyId, secretAccessKey };
+export const S3_ENV_VARS = [
+  'TAPE_S3_ENDPOINT',
+  'TAPE_S3_REGION',
+  'TAPE_S3_BUCKET',
+  'TAPE_S3_KEY_ID',
+  'TAPE_S3_SECRET',
+] as const;
+
+/**
+ * Reports which variables are present and which are missing, rather than
+ * collapsing "none configured" and "half configured" into a single null.
+ *
+ * That distinction is load-bearing. A partially-set config used to fall through
+ * to the local filesystem store, which on a CI runner means writing the entire
+ * run to a disk that is destroyed when the job ends — while exiting zero and
+ * reporting success. A rotated or mistyped secret would have looked exactly like
+ * a healthy tape.
+ */
+export function inspectS3Env(env: NodeJS.ProcessEnv): {
+  config: S3Config | null;
+  present: string[];
+  missing: string[];
+} {
+  const present = S3_ENV_VARS.filter((k) => (env[k] ?? '').length > 0);
+  const missing = S3_ENV_VARS.filter((k) => (env[k] ?? '').length === 0);
+  if (missing.length > 0) return { config: null, present: [...present], missing: [...missing] };
+  return {
+    config: {
+      endpoint: (env['TAPE_S3_ENDPOINT'] as string).replace(/\/+$/, ''),
+      region: env['TAPE_S3_REGION'] as string,
+      bucket: env['TAPE_S3_BUCKET'] as string,
+      accessKeyId: env['TAPE_S3_KEY_ID'] as string,
+      secretAccessKey: env['TAPE_S3_SECRET'] as string,
+    },
+    present: [...present],
+    missing: [],
+  };
 }
 
 export class S3Error extends Error {

@@ -44,7 +44,7 @@ type FeedRoot = { db_name: string; doc_count: number; update_seq: number };
  * This is the single load-bearing invariant in the project: the cursor must never
  * advance past feed rows that are not yet in the archive, because those rows can
  * never be re-requested. The brand makes that ordering a compile error rather
- * than a comment — `advanceCursor` cannot be called without a value that only
+ * than a comment — `cursor.advance` cannot be called without a value that only
  * `writeFeedBlob` can mint.
  */
 declare const feedReceiptBrand: unique symbol;

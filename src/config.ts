@@ -80,7 +80,7 @@ export const RECENT_LOOKBACK_MS = 30 * 24 * 60 * 60_000;
  * first live run: @atlassian-test-prod/synth-check carries 22,603 versions of which
  * 17,114 are unpublished, and @agentconnect.md/daemon published 537 versions inside
  * 30 days. Uncapped, those produced 453 KB and 245 KB rows against a design budget
- * of ~1 KB. Truncation sets the `high_churn` flag and the true totals are always
+ * of ~1 KB. Truncation sets the `truncated` flag and the true totals are always
  * kept alongside, so nothing is silently lost.
  */
 export const TIMES_WINDOW_MS = 7 * 24 * 60 * 60_000;
@@ -107,10 +107,11 @@ export const MAX_RETAINED_PACKUMENT_BYTES = 512 * 1024;
 // ── Storage ──────────────────────────────────────────────────────────────────
 export const SHARD_MAX_ROWS = 250;
 export const SHARD_MAX_BYTES = 4 * 1024 * 1024;
-/** Self-imposed spend cap. R2 bills overage rather than hard-stopping, so the
- *  recorder stops itself. Packument retention is dropped first, then the run alerts. */
-export const BUDGET_SOFT_BYTES = 8 * 1024 * 1024 * 1024;
-export const BUDGET_HARD_BYTES = 9.5 * 1024 * 1024 * 1024;
+// A self-imposed spend cap belongs here (object stores bill overage rather than
+// hard-stopping), but it is NOT implemented yet — see Phase 2. The constants that
+// used to sit here were never read by anything, which made the README's claim that
+// "the recorder stops itself" false. Measured growth crosses the free tier around
+// day 400, so this is scheduled work, not an emergency.
 
 export const SECURITY_HOLDER_REPO = 'git+https://github.com/npm/security-holder.git';
 export const NPM_HOLDER_LOGIN = 'npm';

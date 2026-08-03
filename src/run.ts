@@ -19,6 +19,7 @@ import { gzipSync } from 'node:zlib';
 import {
   BACKLOG_THRESHOLD,
   FETCH_CUT_MS,
+  HARD_DEADLINE_MS,
   MAX_RETAINED_PACKUMENT_BYTES,
   REGISTRY_CONCURRENCY_BACKLOG,
   REGISTRY_CONCURRENCY_STEADY,
@@ -67,17 +68,10 @@ export type RunOptions = {
   readonly maxFetch?: number;
 };
 
-async function loadDeferred(store: Store): Promise<{ rows: FeedRow[]; consumedKeys: string[] }> {
-  const objects = await store.list('work/deferred/');
-  const rows: FeedRow[] = [];
-  const consumedKeys: string[] = [];
-  for (const { key } of objects) {
-    const bytes = await store.get(key);
-    if (bytes === null) continue;
-    rows.push(...decodeJsonl<FeedRow>(gunzipSync(bytes).toString('utf8')));
-    consumedKeys.push(key);
-  }
-  return { rows, consumedKeys };
+async function loadDeferred(store: Store): Promise<FeedRow[]> {
+  const bytes = await store.get(keys.deferred());
+  if (bytes === null) return [];
+  return decodeJsonl<FeedRow>(gunzipSync(bytes).toString('utf8'));
 }
 
 export async function record(opts: RunOptions): Promise<RunSummary> {
@@ -86,6 +80,10 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   const runId = runIdFrom(now);
   const startedAt = Date.now();
   const fetchCut = startedAt + (opts.fetchCutMs ?? FETCH_CUT_MS);
+  // The workflow's timeout-minutes SIGKILLs the job, which would abandon the
+  // deferred queue and the manifest. This budget is deliberately tighter so the
+  // run finishes its own commits and exits cleanly instead.
+  const hardDeadline = startedAt + HARD_DEADLINE_MS;
   let bytesWritten = 0;
 
   // ── STEP 0: read state, and sanity-check it against the live head ──────────
@@ -93,7 +91,7 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   let cursor: Cursor = (await cursorMod.read(store)) ?? cursorMod.initial(head, now);
   cursorMod.assertSane(cursor, head);
 
-  const { rows: deferredRows, consumedKeys } = await loadDeferred(store);
+  const deferredRows = await loadDeferred(store);
 
   // Recover from a previous run that died after the cursor advanced but before it
   // finished fetching. The feed rows are durable — that ordering is the whole
@@ -177,6 +175,13 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
       if (fetched >= budget || Date.now() >= fetchCut) {
         remaining.push(row);
         continue;
+      }
+      if (Date.now() >= hardDeadline) {
+        // Should be unreachable — fetchCut fires first — but if a single fetch
+        // stalls past it, stop spending time we need for COMMIT C.
+        log.warn('hard deadline reached; stopping fetch phase', { fetched, queued: queue.length });
+        remaining.push(row);
+        break;
       }
 
       const result = await fetchPackument(row.id, limiter);
@@ -275,16 +280,16 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   for (const s of shards.shards) bytesWritten += s.gzBytes;
 
   // ── STEP 5 — COMMIT C: deferred queue FIRST, then the manifest ────────────
-  if (remaining.length > 0) {
-    const deduped = dedupeByNameKeepingNewest(remaining);
-    const written = await putJsonl(store, keys.deferred(runId), deduped, assertNoPII);
-    bytesWritten += written.gzBytes;
+  // Always rewritten, even when empty — otherwise the entries this run consumed
+  // would linger and be reprocessed forever. Overwriting is what removes the need
+  // for a delete-capable credential.
+  const deduped = dedupeByNameKeepingNewest(remaining);
+  const written = await putJsonl(store, keys.deferred(), deduped, assertNoPII);
+  bytesWritten += written.gzBytes;
+  if (deduped.length > 0) {
     await shards.add(gap(runId, 'deferred', now, { detail: `count=${deduped.length}` }));
     log.info('deferred', { count: deduped.length });
   }
-  // Only now are the consumed queue files removable — their contents have been
-  // re-persisted (or fully processed).
-  for (const key of consumedKeys) await store.delete(key);
 
   const manifest = {
     runId,
@@ -306,7 +311,7 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
     Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8'),
   );
 
-  // ── STEP 6 — COMMIT E: record completion ──────────────────────────────────
+  // ── STEP 6 — COMMIT D: record completion ──────────────────────────────────
   cursor = cursorMod.withRunComplete(cursor, runId, new Date(), bytesWritten);
   await cursorMod.write(store, cursor);
 

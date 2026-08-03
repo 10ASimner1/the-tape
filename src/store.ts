@@ -63,9 +63,22 @@ export const keys = {
 
   osv: (date: Date, runId: string) => `raw/osv/${datePath(date)}/${runId}.jsonl.gz`,
 
-  /** Names the fetch phase did not reach. The only non-append-only prefix:
-   *  consumed entries are deleted, which is safe because the names are still in raw/feed. */
-  deferred: (runId: string) => `work/deferred/${runId}.jsonl.gz`,
+  /**
+   * Names the fetch phase did not reach.
+   *
+   * A single key that each run OVERWRITES, rather than one file per run that is
+   * later deleted. That is what lets the recorder run on a credential with no
+   * delete capability at all — Part III wants no automation credential able to
+   * erase history, and removing the requirement beats managing it.
+   *
+   * Safe because it is a cache, not a record: if a run dies before rewriting it,
+   * the stale contents are simply re-processed, and the authoritative list of
+   * names is in raw/feed either way.
+   */
+  deferred: () => 'work/deferred/current.jsonl.gz',
+
+  /** Fixed key, overwritten on every check, so probing leaves no litter behind. */
+  selfCheck: () => 'state/selfcheck/probe.txt',
 
   manifest: (date: Date, runId: string) => `raw/runs/${datePath(date)}/${runId}.json`,
 

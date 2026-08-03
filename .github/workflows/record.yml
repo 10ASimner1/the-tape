@@ -1,13 +1,19 @@
 name: record
 
-# Twice hourly, off the top of the hour. GitHub documents that scheduled runs are
-# delayed or dropped under load and that "the start of every hour" is the worst
-# time — so a second firing gives every hour a spare. Work is proportional to
-# elapsed change rather than to run count, so the extra run costs almost nothing
-# when the first one succeeded.
+# Every 15 minutes, never on the hour.
+#
+# MEASURED: GitHub fired only 2 of an expected 7 scheduled runs over 3.5 hours —
+# a 28% firing rate, with one 213-minute gap. It documents that scheduled runs are
+# delayed or dropped under load, worst at the top of the hour.
+#
+# This is not "more work". Work is proportional to ELAPSED CHANGE, not to run
+# count: daily packument fetches stay ~20,900 either way, each run simply covers a
+# shorter window. Over-scheduling is how you get a reliable effective cadence out
+# of an unreliable scheduler, and the only cost is ~30s of fixed overhead per run,
+# which is free on a public repo.
 on:
   schedule:
-    - cron: "9,39 * * * *"
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
 
 # The recorder needs NO write access to this repository. All state lives in the
@@ -46,6 +52,21 @@ jobs:
 
       # There is no dependency installation step, because there are no runtime
       # dependencies. Nothing is fetched from npm to run the recorder that watches npm.
+
+      # Round-trips one object through the store first. Catches a rotated key, a
+      # wrong endpoint or a signing regression in about a second, rather than
+      # thirty minutes into a run — and, because a partial config is now a hard
+      # error, proves the credentials are really there before any work begins.
+      - name: Verify store credentials
+        run: node src/main.ts store-check
+        env:
+          TAPE_PII_SALT: ${{ secrets.TAPE_PII_SALT }}
+          TAPE_S3_ENDPOINT: ${{ secrets.TAPE_S3_ENDPOINT }}
+          TAPE_S3_REGION: ${{ secrets.TAPE_S3_REGION }}
+          TAPE_S3_BUCKET: ${{ secrets.TAPE_S3_BUCKET }}
+          TAPE_S3_KEY_ID: ${{ secrets.TAPE_S3_KEY_ID }}
+          TAPE_S3_SECRET: ${{ secrets.TAPE_S3_SECRET }}
+
       - name: Record
         run: node src/main.ts record
         env:

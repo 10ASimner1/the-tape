@@ -11,8 +11,8 @@ import { Healthcheck } from './healthcheck.ts';
 import { log, writeStepSummary } from './log.ts';
 import { record } from './run.ts';
 import { FsStore } from './store.fs.ts';
-import { s3ConfigFromEnv, S3Store } from './store.s3.ts';
-import type { Store } from './store.ts';
+import { inspectS3Env, S3Store } from './store.s3.ts';
+import { keys, type Store } from './store.ts';
 
 /** MEASURED: ~103,000 seq per 24h. Deliberately rounded UP — over-reaching
  *  backwards only re-observes packages (duplicates, which are free), while
@@ -24,17 +24,46 @@ function flag(name: string): string | undefined {
   return i === -1 ? undefined : argv[i + 1];
 }
 
+/**
+ * Chooses a store, and refuses to guess.
+ *
+ * The local filesystem store is OPT-IN — either `--local` or an explicit
+ * `TAPE_STORE_DIR`. It used to be the silent fallback whenever the S3 config was
+ * incomplete, which meant a mistyped or rotated secret sent an entire CI run to
+ * the runner's ephemeral disk, exited zero, and pinged the healthcheck as
+ * success. Every alarm we have would have pointed the wrong way: the tape would
+ * have looked perfectly healthy while recording nothing.
+ *
+ * So: a partial S3 config is a startup error, never a downgrade.
+ */
 function makeStore(): Store {
-  // S3 when configured, local disk otherwise. Both satisfy the same four-method
-  // interface, so tests and offline development never need credentials.
-  const s3 = s3ConfigFromEnv(env);
-  if (s3 !== null) {
-    log.info('store', { kind: 's3', bucket: s3.bucket, region: s3.region });
-    return new S3Store(s3);
+  const local = argv.includes('--local');
+  const storeDir = env['TAPE_STORE_DIR'];
+  const { config, present, missing } = inspectS3Env(env);
+
+  if (local || (storeDir !== undefined && config === null)) {
+    const root = storeDir ?? '.tape-store';
+    log.info('store', { kind: 'fs', root });
+    return new FsStore(root);
   }
-  const root = env['TAPE_STORE_DIR'] ?? '.tape-store';
-  log.info('store', { kind: 'fs', root });
-  return new FsStore(root);
+
+  if (config !== null) {
+    log.info('store', { kind: 's3', bucket: config.bucket, region: config.region });
+    return new S3Store(config);
+  }
+
+  if (present.length > 0) {
+    throw new Error(
+      `object store is only partially configured: ${present.length} of ${present.length + missing.length} ` +
+        `variables set, missing ${missing.join(', ')}. Refusing to fall back to local disk — ` +
+        `on a CI runner that silently discards the run while reporting success.`,
+    );
+  }
+
+  throw new Error(
+    `no object store configured. Set ${missing.join(', ')} (see .env.example), ` +
+      `or pass --local to write to the filesystem deliberately.`,
+  );
 }
 
 async function bootstrap(store: Store): Promise<void> {
@@ -61,10 +90,10 @@ async function bootstrap(store: Store): Promise<void> {
  * discovering a problem thirty minutes into a recording run.
  */
 async function storeCheck(store: Store): Promise<void> {
-  // A scoped package name in the key on purpose: percent-encoding is double-encoded
-  // during signing, and scoped names are 77.5% of npm, so this is the case that
-  // breaks first if the encoder is wrong.
-  const key = `state/selfcheck/${encodeURIComponent('@tape/self-check')}-${Date.now()}.txt`;
+  // A fixed key, overwritten every time: this runs before every recording run, so
+  // a timestamped key would litter the bucket ~96 times a day — and with a
+  // no-delete credential there would be no way to clean it up.
+  const key = keys.selfCheck();
   const payload = Buffer.from(`the-tape store check\n`, 'utf8');
 
   await store.put(key, payload);
@@ -90,14 +119,9 @@ async function storeCheck(store: Store): Promise<void> {
   }
   log.info('  list    ok', { found: listed.length });
 
-  try {
-    await store.delete(key);
-    log.info('  delete  ok');
-  } catch {
-    // Expected if the credential deliberately lacks delete rights, which is the
-    // hardened configuration Part III asks for.
-    log.warn('  delete  refused — expected if the key has no delete capability');
-  }
+  // Deliberately does NOT exercise delete. The recorder no longer deletes
+  // anything, and the credential it runs on should not be able to — testing for a
+  // capability we want absent would be backwards.
   log.info('store check passed');
 }
 
@@ -106,8 +130,19 @@ async function recoverCursor(store: Store): Promise<void> {
   if (recovered === null) throw new Error('no feed objects in the archive to recover from');
   const existing = await cursorMod.read(store);
   const base = existing ?? cursorMod.initial(recovered, new Date());
+
+  // Moving BACKWARDS only causes duplicates and is always safe; moving forwards
+  // past unfetched rows is the direction that loses events. So a rewind is
+  // allowed, and an advance is not.
+  if (existing !== null && recovered > existing.lastSeq && flag('force-rewind') === undefined) {
+    throw new Error(
+      `the archive's highest recorded seq (${recovered}) is AHEAD of the stored cursor ` +
+        `(${existing.lastSeq}). Moving the cursor forwards would skip everything between ` +
+        `them. Pass --force-rewind only if you have confirmed those rows were processed.`,
+    );
+  }
   log.info('recovered cursor from archive', { was: existing?.lastSeq ?? null, now: recovered });
-  await cursorMod.write(store, { ...base, lastSeq: recovered });
+  await cursorMod.write(store, { ...base, lastSeq: recovered, pendingFeedKey: null });
 }
 
 async function main(): Promise<void> {

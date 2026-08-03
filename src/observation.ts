@@ -9,8 +9,8 @@
  * observation is exact no matter when the fetch landed.
  *
  * It is also a complete EXTRACT rather than a pointer. Full packuments are kept
- * for only ~18% of changes (new and flagged packages), so any field missing from
- * this row is unrecoverable for the other 82%.
+ * for only ~11% of changes (measured on a live sample), so any field missing from
+ * this row is unrecoverable for the other 89%.
  */
 
 import { createHash } from 'node:crypto';
@@ -88,7 +88,6 @@ export type Gap = {
     | 'too_large'
     | 'deferred'
     | 'triage'
-    | 'budget_stop'
     /** The PII gate refused this package's bytes. Recorded and skipped rather
      *  than aborting: the tape outranks any single package. */
     | 'pii_refused'
@@ -223,7 +222,7 @@ export function buildObservation(input: BuildInput): Observation {
  *                        tarball is 404 at npm either way, so the extra bytes buy
  *                        almost no forensic depth. (A yank on a new package still
  *                        gets retained, via new_package.)
- *   high_churn           the largest packuments and the least interesting: automated
+ *   truncated            the largest packuments and the least interesting: automated
  *                        release bots, not supply-chain events.
  */
 const RETAIN_FLAGS = ['new_package', 'package_unpublished', 'install_scripts'];

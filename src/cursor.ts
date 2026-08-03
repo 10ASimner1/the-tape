@@ -43,8 +43,8 @@ export class CursorRegressionError extends Error {
     super(
       `refusing to move the cursor backwards: ${from} -> ${to}. ` +
         `Moving forward past unwritten rows loses events permanently; moving backwards ` +
-        `only causes duplicates, but it is never done implicitly. Use recover-cursor ` +
-        `to re-derive from the archive, or pass --force-rewind deliberately.`,
+        `only causes duplicates, but it is never done implicitly. Run ` +
+        `\`npm run recover-cursor\`` + ` to re-derive the true position from the archive.`,
     );
     this.name = 'CursorRegressionError';
   }
@@ -109,9 +109,15 @@ export function withOsvWatermark(cursor: Cursor, watermark: string): Cursor {
 }
 
 // ── Persistence ──────────────────────────────────────────────────────────────
-// M1 keeps the cursor in the blob store. M2 moves it to an orphan git branch,
-// where a non-fast-forward push rejection becomes the compare-and-swap between
-// overlapping runs — a primitive B2's S3 layer does not offer.
+// The cursor lives in the blob store alongside the archive.
+//
+// An earlier design put it on an orphan git branch so a non-fast-forward push
+// rejection would act as a compare-and-swap between overlapping runs. That was
+// dropped: it would have forced the recorder to hold `contents: write` on the
+// repository containing its own workflow, which is a worse trade than the race it
+// prevents. Mutual exclusion comes from Actions `concurrency` instead, and there
+// is deliberately NO compare-and-swap here — B2's S3 layer offers no conditional
+// PUT, and the cursor's monotonicity assertion is what catches a forward clobber.
 
 /**
  * Fills in fields added since the stored cursor was written.
