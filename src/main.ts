@@ -10,6 +10,7 @@ import { headSeq } from './feed.ts';
 import { log, writeStepSummary } from './log.ts';
 import { record } from './run.ts';
 import { FsStore } from './store.fs.ts';
+import { s3ConfigFromEnv, S3Store } from './store.s3.ts';
 import type { Store } from './store.ts';
 
 /** MEASURED: ~103,000 seq per 24h. Deliberately rounded UP — over-reaching
@@ -23,9 +24,13 @@ function flag(name: string): string | undefined {
 }
 
 function makeStore(): Store {
-  // M1 runs entirely on local disk, so no cloud provider decision is needed to
-  // start. store.s3.ts (hand-rolled SigV4, zero deps) lands at M2 behind the
-  // same four-method interface.
+  // S3 when configured, local disk otherwise. Both satisfy the same four-method
+  // interface, so tests and offline development never need credentials.
+  const s3 = s3ConfigFromEnv(env);
+  if (s3 !== null) {
+    log.info('store', { kind: 's3', bucket: s3.bucket, region: s3.region });
+    return new S3Store(s3);
+  }
   const root = env['TAPE_STORE_DIR'] ?? '.tape-store';
   log.info('store', { kind: 'fs', root });
   return new FsStore(root);
@@ -47,6 +52,52 @@ async function bootstrap(store: Store): Promise<void> {
   const start = Math.max(0, head - Math.round(hours * SEQ_PER_HOUR));
   await cursorMod.write(store, cursorMod.initial(start, new Date()));
   log.info('bootstrapped', { head, lastSeq: start, approxHours: hours });
+}
+
+/**
+ * Round-trips one throwaway object through every store operation. Verifies
+ * credentials, endpoint, region and SigV4 signing in a few seconds, rather than
+ * discovering a problem thirty minutes into a recording run.
+ */
+async function storeCheck(store: Store): Promise<void> {
+  // A scoped package name in the key on purpose: percent-encoding is double-encoded
+  // during signing, and scoped names are 77.5% of npm, so this is the case that
+  // breaks first if the encoder is wrong.
+  const key = `state/selfcheck/${encodeURIComponent('@tape/self-check')}-${Date.now()}.txt`;
+  const payload = Buffer.from(`the-tape store check\n`, 'utf8');
+
+  await store.put(key, payload);
+  log.info('  put     ok', { key });
+
+  const got = await store.get(key);
+  if (got === null || Buffer.compare(Buffer.from(got), payload) !== 0) {
+    throw new Error('store check failed: the object read back did not match what was written');
+  }
+  log.info('  get     ok', { bytes: got.length });
+
+  const absent = await store.get(`${key}.does-not-exist`);
+  if (absent !== null) throw new Error('store check failed: a missing key did not return null');
+  log.info('  get 404 ok');
+
+  const again = await store.putIfAbsent(key, payload);
+  if (again.written) throw new Error('store check failed: putIfAbsent overwrote an existing key');
+  log.info('  putIfAbsent ok', { written: false });
+
+  const listed = await store.list('state/selfcheck/');
+  if (!listed.some((o) => o.key === key)) {
+    throw new Error(`store check failed: list did not return the key it just wrote`);
+  }
+  log.info('  list    ok', { found: listed.length });
+
+  try {
+    await store.delete(key);
+    log.info('  delete  ok');
+  } catch {
+    // Expected if the credential deliberately lacks delete rights, which is the
+    // hardened configuration Part III asks for.
+    log.warn('  delete  refused — expected if the key has no delete capability');
+  }
+  log.info('store check passed');
 }
 
 async function recoverCursor(store: Store): Promise<void> {
@@ -82,6 +133,9 @@ async function main(): Promise<void> {
     case 'recover-cursor':
       await recoverCursor(store);
       return;
+    case 'store-check':
+      await storeCheck(store);
+      return;
     case 'record': {
       const maxFetch = flag('max-fetch');
       const summary = await record({
@@ -106,7 +160,7 @@ async function main(): Promise<void> {
       return;
     }
     default:
-      throw new Error(`unknown mode "${mode}". Use: bootstrap | record | recover-cursor`);
+      throw new Error(`unknown mode "${mode}". Use: bootstrap | record | store-check | recover-cursor`);
   }
 }
 
