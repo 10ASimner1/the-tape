@@ -8,6 +8,10 @@ node_modules/
 .tape-store/
 *.local.json
 
+# Transient staging dir used when piping secrets into `gh secret set`. Deleted
+# immediately, but ignored in case a run is interrupted mid-way.
+.secrets-stage/
+
 # Secrets live in .env.local (covered by .env.* above) and in GitHub Actions
 # secrets. Nowhere else — not in code, not in config, not in a commit message.
 # If the PII salt leaks, every maintainer hash in the archive becomes a
