@@ -79,7 +79,7 @@ re-applied to all of history.
 Requires **Node 24**. Zero runtime dependencies.
 
 ```bash
-npm test                  # 105 tests, against real captured packuments
+npm test                  # 111 tests, against real captured packuments
 npm run typecheck
 node scripts/pii-audit.ts # refuses any personal address in the tree
 ```
@@ -171,7 +171,7 @@ infrastructure, plus a domain".
 ## 8. State as of 2026-08-03
 
 **Done:** M1 (rules + loop), M2 (hourly Actions + S3 store), M3 (index, OSV join,
-typosquat, digest). 105 tests. Zero runtime dependencies.
+typosquat, digest). 111 tests. Zero runtime dependencies.
 
 **Outstanding, in priority order:**
 
@@ -182,7 +182,15 @@ typosquat, digest). 105 tests. Zero runtime dependencies.
 5. **A privacy notice.** The repo is public and the project processes maintainer data at scale.
 6. **M4 acceptance:** seven unbroken days, a `SIGKILL` mid-run drill, and a full rebuild-from-raw drill.
 
-**Watch:** the scheduled-run firing rate over a full day, now that the cron is `*/15`-ish.
+**Watch:** the scheduled-run firing rate over a full day, now that the cron is
+`7,22,37,52`.
+
+**On reviews:** M3 shipped, then an adversarial review found nine real defects in
+it — including two that made the public digest quietly wrong. `backfill` is
+provenance, not recency; misusing it as a filter deleted almost every
+single-observation package, which is exactly the population a typosquat belongs
+to. Worth repeating that exercise on anything that writes permanent rows or
+publishes.
 
 ---
 
