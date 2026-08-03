@@ -83,7 +83,17 @@ export type Gap = {
   readonly k: 'gap';
   readonly schema: 1;
   readonly run: string;
-  readonly kind: 'fetch_failed' | 'too_large' | 'deferred' | 'triage' | 'budget_stop';
+  readonly kind:
+    | 'fetch_failed'
+    | 'too_large'
+    | 'deferred'
+    | 'triage'
+    | 'budget_stop'
+    /** The PII gate refused this package's bytes. Recorded and skipped rather
+     *  than aborting: the tape outranks any single package. */
+    | 'pii_refused'
+    /** Reconstructed from raw/feed after a run died before finishing. */
+    | 'recovered';
   readonly name: string | null;
   readonly seq: number | null;
   readonly rev: string | null;

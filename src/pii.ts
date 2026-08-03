@@ -69,8 +69,8 @@ export function hashEmail(email: string): string {
  * Safe against npm's own vocabulary: a scoped name has no dot between `@` and `/`
  * and nothing matchable before the `@`; `name@1.2.3` fails because the tail after
  * the last dot is digits, not two-plus letters. The realistic false positive is a
- * GitHub shorthand like a versioned package reference in prose inside free text — and free text never reaches
- * a public row, so a hit means something is genuinely wrong.
+ * package reference whose prerelease tag ends in letters, written inline in prose —
+ * and prose never reaches a public row, so a hit means something is genuinely wrong.
  *
  * One false positive costs one run out of ~17,500 a year. One false negative costs
  * the project. That trade is the design.
@@ -109,7 +109,20 @@ function findPersonalAddress(text: string): RegExpExecArray | null {
  *  forgot to project away even when its value happens to be empty or null. */
 const EMAIL_KEY_RE = /"[A-Za-z_]*e-?mail[A-Za-z_]*"\s*:/i;
 
-const MAILTO_RE = /mailto:/i;
+/**
+ * A `mailto:` pointing at anything that is not an already-redacted hash.
+ *
+ * This was a bare /mailto:/i and it stopped the recorder in production. npm
+ * READMEs routinely contain markdown links like `[Email](mailto:someone@example.com)`;
+ * redaction correctly rewrote the address to a hash, and then the gate refused
+ * the write anyway because the literal word "mailto:" was still there. A rule
+ * that fires on already-safe content is not caution, it is an outage.
+ *
+ * The address rule above is what actually protects people. This one only adds
+ * value for a malformed target that EMAIL_RE would miss, so it now looks at the
+ * target rather than the scheme.
+ */
+const MAILTO_RE = /mailto:(?!h:[0-9a-f]{32}\b)[^\s"'<>)\]]+/i;
 
 export class PIILeakError extends Error {
   readonly rule: string;

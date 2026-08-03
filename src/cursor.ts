@@ -23,6 +23,19 @@ export type Cursor = {
   readonly osvWatermark: string | null;
   readonly bytesWrittenMonth: number;
   readonly monthKey: string;
+  /**
+   * The feed window whose packuments are still being fetched.
+   *
+   * Set at COMMIT B and cleared at the end of the run. If a run dies in between —
+   * a crash, a runner timeout, a cancelled job — the next run finds this set and
+   * re-queues those names from the archived feed blob.
+   *
+   * Without it, "delay, not loss" was only an aspiration: the cursor advances
+   * before packuments are fetched (deliberately, because the feed is the
+   * irreplaceable half), so a mid-fetch death left those packages unobserved with
+   * nothing to point back at them. This is what makes the claim true.
+   */
+  readonly pendingFeedKey: string | null;
 };
 
 export class CursorRegressionError extends Error {
@@ -46,6 +59,7 @@ export function initial(headSeq: number, now: Date): Cursor {
     osvWatermark: null,
     bytesWrittenMonth: 0,
     monthKey: monthKeyOf(now),
+    pendingFeedKey: null,
   };
 }
 
@@ -69,8 +83,10 @@ export function advance(cursor: Cursor, receipt: FeedReceipt, now: Date): Cursor
   return {
     ...cursor,
     lastSeq: receipt.lastSeq,
-    // Byte accounting resets with the billing month. R2 bills overage rather
-    // than hard-stopping, so the recorder has to stop itself.
+    // Claim this window as in-flight. Cleared only once the run finishes.
+    pendingFeedKey: receipt.key,
+    // Byte accounting resets with the billing month. Object stores generally bill
+    // overage rather than hard-stopping, so the recorder has to stop itself.
     bytesWrittenMonth: month === cursor.monthKey ? cursor.bytesWrittenMonth : 0,
     monthKey: month,
   };
@@ -81,6 +97,9 @@ export function withRunComplete(cursor: Cursor, runId: string, now: Date, bytes:
     ...cursor,
     lastRunId: runId,
     lastRunCompletedAt: now.toISOString(),
+    // The window is no longer in flight — whatever was not fetched is in
+    // work/deferred by this point.
+    pendingFeedKey: null,
     bytesWrittenMonth: cursor.bytesWrittenMonth + bytes,
   };
 }

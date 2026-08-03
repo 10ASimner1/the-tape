@@ -57,8 +57,21 @@ describe('assertNoPII — the gate', () => {
     assert.throws(() => assertNoPII('{"e-mail": ""}', 'test'), PIILeakError);
   });
 
-  it('refuses mailto:', () => {
+  it('refuses a mailto: pointing at a real address', () => {
+    assert.throws(() => assertNoPII('{"url":"mailto:someone@example.com"}', 'test'), PIILeakError);
     assert.throws(() => assertNoPII('{"url":"mailto:x"}', 'test'), PIILeakError);
+  });
+
+  it('ACCEPTS a mailto: whose address has already been redacted', () => {
+    // Regression. This exact input stopped the recorder in production: an npm
+    // README carried a markdown link `[Email](mailto:someone@example.com)`,
+    // redaction correctly rewrote the address to a hash, and then a bare
+    // /mailto:/ rule refused the write anyway — killing a run that was already
+    // handling ~7,600 packages. A rule that fires on already-safe content is not
+    // caution, it is an outage.
+    const readme = '- **Email**: [h:a701efdfcd24d4e38f486ccb359be748]' +
+      '(mailto:h:a701efdfcd24d4e38f486ccb359be748)\n\n## License';
+    assert.doesNotThrow(() => assertNoPII(JSON.stringify({ readme }), 'test'));
   });
 
   it('refuses an address buried in free text, which is npm\'s own author convention', () => {

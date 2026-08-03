@@ -35,7 +35,7 @@ import { decodeJsonl, putJsonl, ShardWriter } from './jsonl.ts';
 import { log } from './log.ts';
 import { buildObservation, gap, shouldRetainPackument } from './observation.ts';
 import type { Row } from './observation.ts';
-import { assertNoPersonalAddresses, assertNoPII, hashEmail } from './pii.ts';
+import { assertNoPersonalAddresses, assertNoPII, hashEmail, PIILeakError } from './pii.ts';
 import { redactPackument } from './redact.ts';
 import { fetchPackument } from './registry.ts';
 import { keys, runIdFrom, type Store } from './store.ts';
@@ -53,6 +53,7 @@ export type RunSummary = {
   readonly unpublishes: number;
   readonly versionUnpublishes: number;
   readonly packagesWithYanks: number;
+  readonly piiRefused: number;
   readonly bytesWritten: number;
   readonly mode: 'steady' | 'backlog' | 'triage';
 };
@@ -93,6 +94,24 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   cursorMod.assertSane(cursor, head);
 
   const { rows: deferredRows, consumedKeys } = await loadDeferred(store);
+
+  // Recover from a previous run that died after the cursor advanced but before it
+  // finished fetching. The feed rows are durable — that ordering is the whole
+  // point — so the names are recoverable exactly.
+  const recovered: FeedRow[] = [];
+  if (cursor.pendingFeedKey !== null) {
+    const bytes = await store.get(cursor.pendingFeedKey);
+    if (bytes !== null) {
+      for (const r of decodeJsonl<FeedRow & { k?: string }>(gunzipSync(bytes).toString('utf8'))) {
+        if (r.k !== 'feedhdr' && typeof r.id === 'string') recovered.push(r);
+      }
+      log.warn('recovering an unfinished run from its feed blob', {
+        key: cursor.pendingFeedKey, rows: recovered.length,
+      });
+    } else {
+      log.error('pending feed blob is missing from the archive', { key: cursor.pendingFeedKey });
+    }
+  }
   log.info('run start', {
     runId, lastSeq: cursor.lastSeq, head, behind: head - cursor.lastSeq,
     deferred: deferredRows.length,
@@ -122,7 +141,7 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   // ── STEP 4: fetch packuments ──────────────────────────────────────────────
   // A newer rev supersedes an older queue entry: its `time` map is a superset, so
   // one fetch covers both. This is what collapses a multi-day backlog.
-  const queue = dedupeByNameKeepingNewest([...deferredRows, ...drained.rows]);
+  const queue = dedupeByNameKeepingNewest([...recovered, ...deferredRows, ...drained.rows]);
   const mode: RunSummary['mode'] =
     queue.length > TRIAGE_THRESHOLD ? 'triage'
     : queue.length > BACKLOG_THRESHOLD ? 'backlog'
@@ -140,7 +159,12 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   let unpublishes = 0;
   let versionUnpublishes = 0;
   let packagesWithYanks = 0;
+  let piiRefused = 0;
   const remaining: FeedRow[] = [];
+
+  if (recovered.length > 0) {
+    await shards.add(gap(runId, 'recovered', now, { detail: `rows=${recovered.length}` }));
+  }
 
   if (mode === 'triage') {
     // Anti-wedge: enrichment must never starve capture. The names are safe in
@@ -173,14 +197,33 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
           // non-PII field survive; addresses become the same salted hashes the
           // observation rows carry, so they still join across time.
           const text = JSON.stringify(redactPackument(result.doc, hashEmail));
-          assertNoPersonalAddresses(text, `packument:${row.id}`);
-          const gz = gzipSync(Buffer.from(text, 'utf8'), { level: 9 });
-          if (gz.length > MAX_RETAINED_PACKUMENT_BYTES) {
+
+          // The gate is right to refuse and wrong to stop everything. A README
+          // that defeats redaction costs forensic depth on one package; aborting
+          // costs an entire hour of the registry, and the tape outranks any
+          // single package.
+          let refusal: string | null = null;
+          try {
+            assertNoPersonalAddresses(text, `packument:${row.id}`);
+          } catch (err) {
+            if (!(err instanceof PIILeakError)) throw err;
+            refusal = err.rule;
+          }
+
+          const gz = refusal === null ? gzipSync(Buffer.from(text, 'utf8'), { level: 9 }) : null;
+
+          if (refusal !== null) {
+            log.warn('PII gate refused a packument', { name: row.id, rule: refusal });
+            await shards.add(gap(runId, 'pii_refused', now, {
+              name: row.id, seq: row.seq, rev, detail: `packument:${refusal}`,
+            }));
+            piiRefused++;
+          } else if (gz !== null && gz.length > MAX_RETAINED_PACKUMENT_BYTES) {
             // Skipped, not silently dropped: the decision becomes a queryable row.
             await shards.add(gap(runId, 'too_large', now, {
               name: row.id, seq: row.seq, rev, detail: `packument_gz=${gz.length}`,
             }));
-          } else {
+          } else if (gz !== null) {
             packumentKey = keys.packument(row.id, rev);
             // Keyed by (name, rev), so a re-fetch after a crash writes nothing.
             const { written } = await store.putIfAbsent(packumentKey, gz);
@@ -192,6 +235,23 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
       const obs = packumentKey === null
         ? draft
         : buildObservation({ runId, row, result, now, packumentKey });
+
+      // Gate each row on its own before it joins a shard. The guard also runs at
+      // flush time over the whole serialized shard, and one poisoned row would
+      // take 250 good ones down with it.
+      try {
+        assertNoPII(JSON.stringify(obs), `obs:${row.id}`);
+      } catch (err) {
+        if (!(err instanceof PIILeakError)) throw err;
+        // The gate is right to refuse and wrong to stop everything. Record the
+        // refusal as a first-class row so it is queryable, and keep rolling.
+        log.warn('PII gate refused an observation row', { name: row.id, rule: err.rule });
+        await shards.add(gap(runId, 'pii_refused', now, {
+          name: row.id, seq: row.seq, rev: revOf(row), detail: `row:${err.rule}`,
+        }));
+        piiRefused++;
+        continue;
+      }
 
       await shards.add(obs satisfies Row);
       if (obs.flags.length > 0) flagged++;
@@ -262,6 +322,7 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
     unpublishes,
     versionUnpublishes,
     packagesWithYanks,
+    piiRefused,
     bytesWritten,
     mode,
   };
