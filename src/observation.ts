@@ -15,6 +15,7 @@
 
 import { createHash } from 'node:crypto';
 
+import { RETAIN_FLAGS, RETAIN_FLAGS_SOFT } from './config.ts';
 import * as pk from './packument.ts';
 import type { PackumentDoc, VersionDetail, VersionTime } from './packument.ts';
 import type { FeedRow } from './feed.ts';
@@ -92,7 +93,11 @@ export type Gap = {
      *  than aborting: the tape outranks any single package. */
     | 'pii_refused'
     /** Reconstructed from raw/feed after a run died before finishing. */
-    | 'recovered';
+    | 'recovered'
+    /** The storage budget made this run degrade itself. ONE row per run, never
+     *  one per skipped packument — 2,300 rows a day would be noise, and this is
+     *  the row that makes "which days did the tape run degraded?" a query. */
+    | 'budget';
   readonly name: string | null;
   readonly seq: number | null;
   readonly rev: string | null;
@@ -224,13 +229,19 @@ export function buildObservation(input: BuildInput): Observation {
  *                        gets retained, via new_package.)
  *   truncated            the largest packuments and the least interesting: automated
  *                        release bots, not supply-chain events.
+ *
+ * Under a `soft` storage budget the list narrows to RETAIN_FLAGS_SOFT. The cut is
+ * made by irreplaceability rather than by size: an unpublished package's
+ * packument 404s tomorrow, a new package's is still there. security_holder stays
+ * at every tier — it is npm's own takeover marker, it is tiny, and a takeover is
+ * exactly the event this archive exists for.
  */
-const RETAIN_FLAGS = ['new_package', 'package_unpublished', 'install_scripts'];
-
-export function shouldRetainPackument(obs: Pick<Observation, 'flags'>): boolean {
-  return obs.flags.some(
-    (f) => RETAIN_FLAGS.includes(f) || f.startsWith('security_holder_'),
-  );
+export function shouldRetainPackument(
+  obs: Pick<Observation, 'flags'>,
+  tier: 'normal' | 'soft' = 'normal',
+): boolean {
+  const allowed: readonly string[] = tier === 'soft' ? RETAIN_FLAGS_SOFT : RETAIN_FLAGS;
+  return obs.flags.some((f) => allowed.includes(f) || f.startsWith('security_holder_'));
 }
 
 export function gap(

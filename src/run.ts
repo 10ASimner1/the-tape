@@ -26,7 +26,9 @@ import {
   REGISTRY_RPS_BACKLOG,
   REGISTRY_RPS_STEADY,
   TRIAGE_THRESHOLD,
+  USAGE_ANCHOR_STALE_MS,
 } from './config.ts';
+import * as budgetMod from './budget.ts';
 import * as cursorMod from './cursor.ts';
 import type { Cursor } from './cursor.ts';
 import { dedupeByNameKeepingNewest, drain, headSeq, revOf, writeFeedBlob } from './feed.ts';
@@ -78,7 +80,12 @@ export type RunSummary = {
   /** Everything written, manifest included — the figure that matches the bill. */
   readonly bytesWritten: number;
   readonly retained: number;
+  readonly retentionSkipped: number;
   readonly mode: 'steady' | 'backlog' | 'triage';
+  /** Why the run triaged: a deep queue, or an exhausted storage budget. `mode` is
+   *  the behaviour; this is the cause, and they must not be conflated. */
+  readonly triageReason: 'queue' | 'budget' | null;
+  readonly storage: budgetMod.Estimate;
 };
 
 export type RunOptions = {
@@ -88,6 +95,9 @@ export type RunOptions = {
   readonly fetchCutMs?: number;
   /** Test/dev cap on how many packuments to fetch. */
   readonly maxFetch?: number;
+  /** Overrides the storage ceiling, so a budget tier is reachable in a test
+   *  without filling a real bucket. */
+  readonly storageCeilingBytes?: number;
 
   /**
    * Seams for testing the commit ordering without a network.
@@ -178,12 +188,46 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   await cursorMod.write(store, cursor);
   log.info('COMMIT B cursor advanced', { lastSeq: cursor.lastSeq });
 
+  // ── STEP 3b: how much of itself this run is allowed to be ─────────────────
+  //
+  // Textually AFTER commits A and B, and that is not an accident: `tierFor` takes
+  // a FeedReceipt, which only writeFeedBlob can mint, so the budget cannot be
+  // evaluated before the feed is durable. The cap physically cannot refuse the
+  // one write that would lose data permanently.
+  //
+  // A missing or unreadable anchor yields the drift only, which UNDER-estimates —
+  // and under-estimating is the safe direction for a cap, because it fails toward
+  // recording. A stale anchor means the cap has quietly stopped working; that
+  // warns and never fails, since the tape outranks its own accounting.
+  const usage = await budgetMod.read(store).catch(() => null);
+  if (usage !== null && usage.measuredAt !== cursor.usageAnchorAt) {
+    cursor = { ...cursor, usageAnchorAt: usage.measuredAt, bytesSinceUsageAnchor: 0 };
+  }
+  const ceiling = opts.storageCeilingBytes ?? budgetMod.ceilingBytes(process.env);
+  const storedEstimate = (usage?.storedBytes ?? 0) + cursor.bytesSinceUsageAnchor;
+  const stale = usage === null
+    || now.getTime() - Date.parse(usage.measuredAt) > USAGE_ANCHOR_STALE_MS;
+  const tier = budgetMod.tierFor(receipt, storedEstimate, ceiling);
+  const estimate: budgetMod.Estimate = {
+    storedBytes: storedEstimate, ceiling, tier, anchored: usage !== null, stale,
+  };
+  if (tier !== 'normal') {
+    log.warn('storage budget: running degraded', { tier, storage: budgetMod.describe(estimate) });
+  } else if (stale) {
+    log.warn('storage budget: the anchor is missing or stale, so the cap is not enforcing',
+      { storage: budgetMod.describe(estimate) });
+  }
+
   // ── STEP 4: fetch packuments ──────────────────────────────────────────────
   // A newer rev supersedes an older queue entry: its `time` map is a superset, so
   // one fetch covers both. This is what collapses a multi-day backlog.
   const queue = dedupeByNameKeepingNewest([...recovered, ...deferredRows, ...drained.rows]);
+  // `mode` stays the BEHAVIOUR and triageReason records the CAUSE. A fourth mode
+  // value would conflate them and would run the identical code path anyway.
+  const triageReason: RunSummary['triageReason'] =
+    tier === 'hard' ? 'budget' : queue.length > TRIAGE_THRESHOLD ? 'queue' : null;
   const mode: RunSummary['mode'] =
-    queue.length > TRIAGE_THRESHOLD ? 'triage'
+    triageReason !== null ? 'triage'
     : queue.length > BACKLOG_THRESHOLD ? 'backlog'
     : 'steady';
 
@@ -200,6 +244,7 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   let versionUnpublishes = 0;
   let packagesWithYanks = 0;
   let piiRefused = 0;
+  let retentionSkipped = 0;
   const remaining: FeedRow[] = [];
   const retained: RetainedPackument[] = [];
 
@@ -209,9 +254,21 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
 
   if (mode === 'triage') {
     // Anti-wedge: enrichment must never starve capture. The names are safe in
-    // raw/feed either way, so this only defers work — it never loses it.
-    log.warn('TRIAGE: queue too deep, capturing feed only', { queue: queue.length });
-    await shards.add(gap(runId, 'triage', now, { detail: `queue=${queue.length}` }));
+    // raw/feed either way, so this only defers work — it never loses it. The
+    // budget reuses this exact path rather than inventing a new one, because the
+    // trade it accepts is the trade TRIAGE_THRESHOLD already accepts.
+    log.warn(
+      triageReason === 'budget'
+        ? 'TRIAGE: storage budget exhausted, capturing feed only'
+        : 'TRIAGE: queue too deep, capturing feed only',
+      { queue: queue.length, reason: triageReason },
+    );
+    // Always written, at every tier: the record of the run's own degradation is
+    // never itself a casualty of the degradation.
+    await shards.add(gap(runId, 'triage', now, {
+      detail: `queue=${queue.length};reason=${triageReason}` +
+        (triageReason === 'budget' ? `;stored=${storedEstimate}` : ''),
+    }));
     remaining.push(...queue);
   } else {
     for (const row of queue) {
@@ -234,8 +291,11 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
       const draft = buildObservation({ runId, row, result, now, packumentKey: null });
 
       // MEASURED on a live sample: this retains ~11% of changed packages at a mean
-      // of 3.2 KB gzipped. Retaining every packument would be 3.54 GB/day.
-      if (result.raw !== null && shouldRetainPackument(draft) && result.doc !== null) {
+      // of 3.2 KB gzipped. Retaining every packument would be 3.54 GB/day. Under a
+      // soft budget the list narrows to the packuments that cannot be re-fetched.
+      const wanted = shouldRetainPackument(draft, tier === 'soft' ? 'soft' : 'normal');
+      if (result.raw !== null && !wanted && shouldRetainPackument(draft)) retentionSkipped++;
+      if (result.raw !== null && wanted && result.doc !== null) {
         const rev = revOf(row);
         if (rev !== null) {
           // Retained packuments are stored REDACTED, not verbatim. Storing them
@@ -340,6 +400,16 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
     log.info('deferred', { count: deduped.length });
   }
 
+  // One row per degraded run, not one per skipped packument — 2,300 rows a day
+  // would be noise. This is what makes "which days did the tape run degraded?" a
+  // query against the index rather than an archaeology exercise in the logs.
+  if (tier === 'soft') {
+    await shards.add(gap(runId, 'budget', now, {
+      detail: `tier=soft;retention_skipped=${retentionSkipped};stored=${storedEstimate};` +
+        `ceiling=${ceiling}`,
+    }));
+  }
+
   // MUST be the last shards.add() in the run. This gap row used to be added AFTER
   // this flush, and ShardWriter.add only auto-flushes at SHARD_MAX_ROWS or
   // SHARD_MAX_BYTES — one row trips neither — so every deferred gap row the tape
@@ -371,6 +441,7 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
     queued: queue.length,
     fetched,
     deferred: remaining.length,
+    budget: { tier, storedBytes: storedEstimate, ceiling, triageReason },
     // Everything above EXCEPT this manifest — a file cannot state its own size.
     // The cursor's counter is the one that includes it, so the number an operator
     // watches for billing is the cursor's, not this one.
@@ -409,8 +480,15 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
     // in the step summary is the one that matches the bill.
     bytesWritten: bytesTotal,
     retained: retained.length,
+    retentionSkipped,
     mode,
+    triageReason,
+    storage: { ...estimate, storedBytes: storedEstimate + bytesTotal },
   };
-  log.info('run complete', { ...summary, elapsedMs: Date.now() - startedAt });
+  log.info('run complete', {
+    ...summary,
+    storage: budgetMod.describe(summary.storage),
+    elapsedMs: Date.now() - startedAt,
+  });
   return summary;
 }

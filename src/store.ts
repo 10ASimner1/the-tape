@@ -68,6 +68,11 @@ export function datePath(date: Date): string {
 export const keys = {
   cursor: () => 'state/cursor.json',
 
+  /** Measured storage, the spend cap's ground truth. Written ONLY by the nightly
+   *  `usage` step, never by the recorder — two writers on one key would race,
+   *  and there is no conditional PUT to arbitrate them. */
+  usage: () => 'state/usage.json',
+
   /** The irreplaceable file: verbatim feed rows. The one thing that cannot be re-fetched. */
   feed: (date: Date, sinceSeq: number, lastSeq: number) =>
     `raw/feed/${datePath(date)}/${sinceSeq}-${lastSeq}.jsonl.gz`,

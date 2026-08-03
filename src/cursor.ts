@@ -50,6 +50,20 @@ export type Cursor = {
    */
   readonly lastManifestRunId: string | null;
   readonly lastManifestSha256: string | null;
+  /**
+   * Drift since state/usage.json was last measured.
+   *
+   * The anchor is truth and this is what has been written since. Two records with
+   * two writers, never the same key: `usage` is written only by the nightly job,
+   * this only by `record`. There is no conditional PUT (see below), so two
+   * writers on one key would simply lose an update.
+   *
+   * It lives on the cursor because the cursor is already written twice per run —
+   * a separate per-run object would add a PUT to the recorder's critical section
+   * for the sake of a counter, which rule 1 does not permit.
+   */
+  readonly bytesSinceUsageAnchor: number;
+  readonly usageAnchorAt: string | null;
 };
 
 export class CursorRegressionError extends Error {
@@ -76,6 +90,8 @@ export function initial(headSeq: number, now: Date): Cursor {
     pendingFeedKey: null,
     lastManifestRunId: null,
     lastManifestSha256: null,
+    bytesSinceUsageAnchor: 0,
+    usageAnchorAt: null,
   };
 }
 
@@ -101,8 +117,11 @@ export function advance(cursor: Cursor, receipt: FeedReceipt, now: Date): Cursor
     lastSeq: receipt.lastSeq,
     // Claim this window as in-flight. Cleared only once the run finishes.
     pendingFeedKey: receipt.key,
-    // Byte accounting resets with the billing month. Object stores generally bill
-    // overage rather than hard-stopping, so the recorder has to stop itself.
+    // Informational: bytes written this CALENDAR MONTH, reset on rollover.
+    // Note this is NOT what the spend cap reads. Object stores bill cumulative
+    // STORED bytes, and the archive is append-only, so a monthly write counter
+    // reads near-zero on the very day the tier is exhausted. The cap uses
+    // bytesSinceUsageAnchor against a measured anchor instead — see budget.ts.
     bytesWrittenMonth: month === cursor.monthKey ? cursor.bytesWrittenMonth : 0,
     monthKey: month,
   };
@@ -123,6 +142,7 @@ export function withRunComplete(
     // work/deferred by this point.
     pendingFeedKey: null,
     bytesWrittenMonth: cursor.bytesWrittenMonth + bytes,
+    bytesSinceUsageAnchor: cursor.bytesSinceUsageAnchor + bytes,
     lastManifestRunId: runId,
     lastManifestSha256: manifestSha256,
   };
@@ -169,6 +189,8 @@ function normalize(raw: Partial<Cursor>, now: Date): Cursor {
     // than evidence of a deletion.
     lastManifestRunId: raw.lastManifestRunId ?? null,
     lastManifestSha256: raw.lastManifestSha256 ?? null,
+    bytesSinceUsageAnchor: raw.bytesSinceUsageAnchor ?? 0,
+    usageAnchorAt: raw.usageAnchorAt ?? null,
   };
 }
 

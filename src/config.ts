@@ -107,11 +107,62 @@ export const MAX_RETAINED_PACKUMENT_BYTES = 512 * 1024;
 // ── Storage ──────────────────────────────────────────────────────────────────
 export const SHARD_MAX_ROWS = 250;
 export const SHARD_MAX_BYTES = 4 * 1024 * 1024;
-// A self-imposed spend cap belongs here (object stores bill overage rather than
-// hard-stopping), but it is NOT implemented yet — see Phase 2. The constants that
-// used to sit here were never read by anything, which made the README's claim that
-// "the recorder stops itself" false. Measured growth crosses the free tier around
-// day 400, so this is scheduled work, not an emergency.
+
+/**
+ * Retained: the cases where the packument is SMALL and IRREPLACEABLE.
+ *
+ * Moved here from observation.ts, where it was a module-private const despite
+ * being one of the two values that control a 13x storage swing. Retaining every
+ * packument would be 3.54 GB/day; "any flag at all" retained 45% of changed
+ * packages. See docs/assumptions.md §6 — and never tune this from a desk
+ * estimate, because that is exactly how it was got wrong the first time.
+ */
+export const RETAIN_FLAGS = ['new_package', 'package_unpublished', 'install_scripts'] as const;
+
+/**
+ * What the SOFT budget tier still retains.
+ *
+ * Chosen by irreplaceability, not by byte count: an unpublished package's
+ * packument 404s tomorrow, and a new package's packument is still there. So
+ * under storage pressure the tape keeps the death certificates and gives up the
+ * birth certificates, because only one of those can be re-requested later.
+ *
+ * How much this actually saves must be MEASURED from the bucket (`usage` reports
+ * bytes per prefix) rather than projected. The argument above holds regardless of
+ * the number; the number decides whether the soft rung buys enough time.
+ */
+export const RETAIN_FLAGS_SOFT = ['package_unpublished'] as const;
+
+// ── The spend cap ────────────────────────────────────────────────────────────
+/**
+ * MEASURED (docs/assumptions.md §5): Backblaze B2's free tier is 10 GB of
+ * CUMULATIVE STORAGE with free Class A/B/C transactions. Not a monthly write
+ * allowance — the archive is append-only, so every byte ever written is still
+ * being billed for, and stored bytes is the only quantity that bills.
+ *
+ * Decimal, not binary: providers quote storage in decimal GB, and reading a
+ * decimal tier as binary would overshoot it by 7.4%.
+ *
+ * Override with TAPE_STORAGE_CEILING_BYTES when the plan is upgraded. It lives
+ * beside the credentials it describes, and setting it absurdly high disables the
+ * cap entirely — one knob, no second flag to fall out of sync with it.
+ */
+export const STORAGE_FREE_TIER_BYTES = 10_000_000_000;
+
+/** SOFT — stop retaining the packuments that can still be re-fetched.
+ *  The remaining headroom must be long enough for a human to notice, decide, and
+ *  either upgrade the plan or stand up a second bucket. */
+export const BUDGET_SOFT_FRACTION = 0.75;
+
+/** HARD — feed only, through the triage path that already exists. Feed rows are
+ *  well under a megabyte a day gzipped, so the last slice of the tier keeps the
+ *  irreplaceable half running for years rather than days. */
+export const BUDGET_HARD_FRACTION = 0.92;
+
+/** Past this the anchor is too old to be trusted and the cap has quietly stopped
+ *  working. Warns loudly; never fails a run — the tape outranks its own
+ *  accounting, and a stuck measurement is not a reason to stop recording. */
+export const USAGE_ANCHOR_STALE_MS = 7 * 24 * 60 * 60_000;
 
 // ── The second copy ──────────────────────────────────────────────────────────
 /**

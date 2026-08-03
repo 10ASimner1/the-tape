@@ -10,6 +10,7 @@ import { headSeq } from './feed.ts';
 import { Healthcheck } from './healthcheck.ts';
 import { log, writeStepSummary } from './log.ts';
 import { build } from './index/build.ts';
+import * as budgetMod from './budget.ts';
 import * as ledgerMod from './ledger.ts';
 import * as mirrorMod from './mirror.ts';
 import { collect, render } from './index/digest.ts';
@@ -458,6 +459,34 @@ async function restoreDrill(): Promise<void> {
   }
 }
 
+/**
+ * Measures what the bucket actually holds, and writes the spend cap's anchor.
+ *
+ * Runs nightly inside the index job, which already holds credentials and already
+ * writes to the primary. Deliberately NOT hourly: it lists the whole store, and
+ * putting that in the recorder's critical section to maintain a counter is
+ * exactly the trade rule 1 forbids.
+ *
+ * The number is MEASURED rather than projected on purpose. It is the only value
+ * allowed to make the recorder degrade itself, and a storage figure estimated at
+ * a desk was wrong by 13x once already in this project.
+ */
+async function writeUsage(store: Store): Promise<void> {
+  const usage = await budgetMod.measure(store, new Date());
+  await budgetMod.write(store, usage);
+
+  const ceiling = budgetMod.ceilingBytes(env);
+  log.info('storage measured', {
+    objects: usage.objects,
+    storedBytes: usage.storedBytes,
+    ceiling,
+    pct: Math.round((usage.storedBytes / ceiling) * 100),
+    byPrefix: Object.entries(usage.byPrefix)
+      .map(([p, v]) => `${p}=${v.bytes}`)
+      .join(' '),
+  });
+}
+
 async function recoverCursor(store: Store): Promise<void> {
   const recovered = await cursorMod.recoverFromArchive(store);
   if (recovered === null) throw new Error('no feed objects in the archive to recover from');
@@ -487,7 +516,7 @@ async function recoverCursor(store: Store): Promise<void> {
  * it, which is the opposite of least privilege.
  */
 const SALT_FREE_MODES = new Set([
-  'recover-cursor', 'ledger', 'verify-chain', 'mirror', 'restore-drill',
+  'recover-cursor', 'ledger', 'verify-chain', 'mirror', 'restore-drill', 'usage',
 ]);
 
 async function main(): Promise<void> {
@@ -524,6 +553,9 @@ async function main(): Promise<void> {
   switch (mode) {
     case 'mirror':
       await runMirror(store);
+      return;
+    case 'usage':
+      await writeUsage(store);
       return;
     case 'ledger':
       await writeLedger(store);
@@ -573,14 +605,18 @@ async function main(): Promise<void> {
         `| version unpublishes | ${summary.versionUnpublishes} (across ${summary.packagesWithYanks} packages) |`,
         `| packuments retained | ${summary.retained} |`,
         `| bytes written | ${summary.bytesWritten} |`,
-        `| mode | ${summary.mode} |`,
+        `| mode | ${summary.mode}${summary.triageReason === null ? '' : ` (${summary.triageReason})`} |`,
+        // On EVERY run, not just degraded ones. A number an operator only sees
+        // once it is already a problem is a number nobody was watching.
+        `| storage | ${budgetMod.describe(summary.storage)} |`,
+        `| retention skipped | ${summary.retentionSkipped} |`,
       ]);
       return;
     }
     default:
       throw new Error(
         `unknown mode "${mode}". Use: bootstrap | record | index | store-check | ` +
-          `recover-cursor | ledger | verify-chain | mirror | restore-drill`,
+          `recover-cursor | ledger | verify-chain | mirror | restore-drill | usage`,
       );
   }
 }

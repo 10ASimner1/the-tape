@@ -71,6 +71,23 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      # Measures what the bucket actually holds and writes state/usage.json, the
+      # spend cap's anchor. Nightly, not hourly: it lists the whole store, and
+      # putting that in the recorder's critical section to maintain a counter is
+      # exactly the trade rule 1 forbids. This job already holds credentials and
+      # already writes to the primary, so it costs no new secret and no new
+      # workflow — and it is the ONLY writer of that key, which matters because
+      # B2's S3 layer has no conditional PUT to arbitrate two of them.
+      - name: Measure stored bytes
+        run: node src/main.ts usage
+        env:
+          TAPE_S3_ENDPOINT: ${{ secrets.TAPE_S3_ENDPOINT }}
+          TAPE_S3_REGION: ${{ secrets.TAPE_S3_REGION }}
+          TAPE_S3_BUCKET: ${{ secrets.TAPE_S3_BUCKET }}
+          TAPE_S3_KEY_ID: ${{ secrets.TAPE_S3_KEY_ID }}
+          TAPE_S3_SECRET: ${{ secrets.TAPE_S3_SECRET }}
+          TAPE_STORAGE_CEILING_BYTES: ${{ vars.TAPE_STORAGE_CEILING_BYTES }}
+
       # Transcribes the day's run manifests into a hash-chained ledger line per
       # run. This mode ALWAYS exits zero, even over a broken chain: the day the
       # chain breaks must not also be the day the evidence fails to reach git.

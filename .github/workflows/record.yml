@@ -79,3 +79,8 @@ jobs:
           TAPE_REPO_URL: ${{ secrets.TAPE_REPO_URL }}
           TAPE_CONTACT: ${{ secrets.TAPE_CONTACT }}
           TAPE_HEALTHCHECK_URL: ${{ secrets.TAPE_HEALTHCHECK_URL }}
+          # A repository VARIABLE, not a secret: it is a number, and it needs to
+          # be visible so a degraded run is explicable. Unset means the free tier.
+          # Raise it when the plan is upgraded; set it absurdly high to disable
+          # the cap entirely.
+          TAPE_STORAGE_CEILING_BYTES: ${{ vars.TAPE_STORAGE_CEILING_BYTES }}

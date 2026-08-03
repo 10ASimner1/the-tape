@@ -38,6 +38,15 @@ export type RunManifest = {
   readonly queued: number;
   readonly fetched: number;
   readonly deferred: number;
+  /** What the storage budget allowed this run to be, and the numbers behind it.
+   *  Recorded so a degraded run is explicable years later from the archive
+   *  alone, rather than only from a log line that has long since rotated. */
+  readonly budget: {
+    readonly tier: 'normal' | 'soft' | 'hard';
+    readonly storedBytes: number;
+    readonly ceiling: number;
+    readonly triageReason: 'queue' | 'budget' | null;
+  };
   /** Everything the run wrote EXCEPT this manifest — a file cannot state its own
    *  size. The cursor's counter is the one that includes it. */
   readonly bytesWritten: number;
