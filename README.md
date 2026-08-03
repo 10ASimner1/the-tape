@@ -6,8 +6,8 @@ into an append-only archive.
 Unpublished packages vanish from every public record. Every day not recorded is lost
 forever. This keeps the tape rolling.
 
-**Status: M1.** The recorder runs against the live feed and writes a complete archive
-to local disk. Cloud storage and the hourly workflow are M2.
+**Status: M2.** The recorder runs on GitHub Actions twice an hour, writing to an
+S3-compatible bucket. Next is the nightly index, the OSV join and the daily digest.
 
 npm explicitly permits this. Its [crawler policy](https://docs.npmjs.com/policies/crawlers/)
 states that a full metadata copy via CouchDB replication *"is acceptable within our
@@ -156,6 +156,19 @@ Measured, not estimated: **1,711 bytes gzipped per changed package** → ~**36 M
 The first live run came in at 469 MB/day. Two constants fixed it, and the story is in
 [docs/assumptions.md](docs/assumptions.md) §6 — worth reading before changing any
 retention rule.
+
+| | |
+|---|---|
+| GitHub Actions | £0 — unlimited on public repos with standard runners |
+| Object storage | £0 for roughly the first 9 months (10 GB free tier), then pennies per month |
+| Domain | **~$12.87/year** |
+
+So the honest claim is **$0/month infrastructure, plus a domain** — not "$0/month".
+The domain is the project's only committed recurring cost, and it exists because
+Part III requires a contact address in the User-Agent that isn't a personal one.
+
+`src/budget.ts` tracks cumulative bytes in the cursor and refuses to write past a
+self-imposed cap, because object stores generally bill overage rather than stopping.
 
 ## Layout
 
