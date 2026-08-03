@@ -199,6 +199,7 @@ rather than an emergency. Until then, watch the bucket.
 | `src/index/derive.ts` | Observations → events. Every rule the recorder deliberately does *not* apply at write time. |
 | `src/index/digest.ts` | The daily digest, including the graveyard. Gated on every write. |
 | `src/config.ts` | Every tunable, with the measurement behind it. |
+| `docs/HANDOFF.md` | **Start here to operate it.** State, runbook, known holes, what's outstanding. |
 | `docs/assumptions.md` | What was verified against the live APIs, and when. |
 
 Test fixtures are real registry captures, stored whole rather than reduced, so any
