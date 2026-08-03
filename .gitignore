@@ -23,3 +23,9 @@ node_modules/
 # If the PII salt leaks, every maintainer hash in the archive becomes a
 # reversible email address.
 
+
+# Local mirror and restore-drill output. Both are copies of the archive, and the
+# repo holds metadata only — a committed mirror would put the private tier
+# (packuments, with maintainer data) into a public repository.
+.tape-mirror/
+.tape-restore/

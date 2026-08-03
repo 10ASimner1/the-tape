@@ -1,0 +1,61 @@
+name: drill
+
+# The restore drill. An untested backup is a hope, not a backup.
+#
+# Rebuilds the SQLite index from the MIRROR alone, re-renders a day's digest, and
+# compares its graveyard against what was published at the time. This is Part III
+# §6's restore drill and M4's rebuild-from-raw acceptance criterion.
+#
+# Manual only. It is a drill, not a monitor — running it on a schedule would turn
+# a deliberate exercise into another green tick nobody reads.
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Day to rebuild and compare (YYYY-MM-DD). Defaults to yesterday."
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tape-drill
+  cancel-in-progress: false
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      # Needs the repo: the drill compares the rebuilt digest against the
+      # committed one, and the rebuilt chain against the committed ledger.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      # NOTE what is absent: every TAPE_S3_* secret. That absence is the point.
+      # A restore drill that can still reach the primary proves nothing, because
+      # every fallback quietly succeeds against the archive you are pretending to
+      # have lost. main.ts refuses to run if the primary is configured; this
+      # workflow makes that refusal unreachable by not providing it.
+      #
+      # No TAPE_PII_SALT either: neither the index build nor the digest hashes an
+      # address, so the salt has no business sitting next to the mirror keys.
+      - name: Rebuild the archive from the mirror alone
+        run: |
+          if [ -n "${DATE:-}" ]; then
+            node src/main.ts restore-drill --into .tape-restore --date "$DATE"
+          else
+            node src/main.ts restore-drill --into .tape-restore
+          fi
+        env:
+          DATE: ${{ inputs.date }}
+          TAPE_MIRROR_S3_ENDPOINT: ${{ secrets.TAPE_MIRROR_S3_ENDPOINT }}
+          TAPE_MIRROR_S3_REGION: ${{ secrets.TAPE_MIRROR_S3_REGION }}
+          TAPE_MIRROR_S3_BUCKET: ${{ secrets.TAPE_MIRROR_S3_BUCKET }}
+          TAPE_MIRROR_S3_KEY_ID: ${{ secrets.TAPE_MIRROR_S3_KEY_ID }}
+          TAPE_MIRROR_S3_SECRET: ${{ secrets.TAPE_MIRROR_S3_SECRET }}

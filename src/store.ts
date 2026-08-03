@@ -23,6 +23,21 @@ export interface Store {
 }
 
 /**
+ * Where a store actually points. Not an operation, so not part of the interface
+ * above — that surface stays at five methods deliberately. Read through
+ * `identityOf`, which tolerates a store that does not offer one.
+ *
+ * This exists for exactly one job: proving that the "second, independent copy"
+ * of the archive is not the first one wearing a different name.
+ */
+export type StoreIdentity = { readonly endpoint: string; readonly bucket: string };
+
+export function identityOf(store: Store): StoreIdentity | null {
+  const id = (store as { identity?: StoreIdentity }).identity;
+  return typeof id?.endpoint === 'string' && typeof id.bucket === 'string' ? id : null;
+}
+
+/**
  * Package names contain `@` and `/` and are 77.5% scoped, so they are never
  * interpolated into a key raw — that would create phantom prefixes and break any
  * code that stages to a local path before uploading.

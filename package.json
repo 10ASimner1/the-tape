@@ -19,7 +19,10 @@
     "ledger": "node --env-file-if-exists=.env.local src/main.ts ledger",
     "//verify-chain": "Deliberately NO --env-file: the whole claim is that anyone with a clone can verify the chain without credentials. Pass --store to additionally check the archive.",
     "verify-chain": "node src/main.ts verify-chain",
-    "pii-audit": "node scripts/pii-audit.ts"
+    "pii-audit": "node scripts/pii-audit.ts",
+    "mirror": "node --env-file-if-exists=.env.local src/main.ts mirror",
+    "//restore-drill": "Deliberately NO --env-file: the drill refuses to run with the primary configured, and .env.local carries it. Pass the mirror vars explicitly.",
+    "restore-drill": "node src/main.ts restore-drill"
   },
   "//": "dependencies is intentionally empty. This is a supply-chain-security project; the recorder runs on Node built-ins alone, so there is no lockfile attack surface to be the story about.",
   "dependencies": {},

@@ -113,6 +113,46 @@ export const SHARD_MAX_BYTES = 4 * 1024 * 1024;
 // "the recorder stops itself" false. Measured growth crosses the free tier around
 // day 400, so this is scheduled work, not an emergency.
 
+// ── The second copy ──────────────────────────────────────────────────────────
+/**
+ * What the mirror copies, and THE ORDER IS THE PRIORITY.
+ *
+ * A mirror run that runs out of time has copied the irreplaceable things first.
+ * That is rule 1 expressed as a constant rather than as a hope.
+ *
+ * Every prefix here is IMMUTABLE, and that is what makes the whole design cheap:
+ * the mirror is a pure append, so the mirror credential needs neither delete nor
+ * overwrite, and a diff of two listings is a complete and correct description of
+ * what is missing. Notably absent:
+ *
+ *   state/cursor.json  Mutable. Mirroring it would force a put-vs-putIfAbsent
+ *                      choice that is wrong either way, and it is unnecessary —
+ *                      recoverFromArchive() re-derives lastSeq exactly from the
+ *                      feed object keys. Leaving it out means the restore drill
+ *                      exercises that recovery path every single time, which is
+ *                      the path you actually want proven.
+ *   work/              Explicitly a cache, not a record (see store.ts).
+ *   state/selfcheck/   Litter from the pre-run probe.
+ *
+ * Deliberately NOT a watermark. private/pkg/<name>/<rev> keys carry no date, so a
+ * new key can appear anywhere in the keyspace at any time, and private/ is the
+ * large majority of the object count — a lexical high-water mark there would skip
+ * writes silently. It is the same trap cursor.ts refuses for the same reason.
+ * Listing is free on B2 (Class B/C), so there is nothing to buy by being clever.
+ */
+export const MIRROR_PREFIXES = [
+  'raw/feed/', // THE irreplaceable file — nothing else on the internet has it
+  'raw/runs/', // manifests: what the git ledger is checked against
+  'raw/obs/', //  the index is rebuilt from these
+  'raw/osv/',
+  'private/', // discretionary: re-fetchable while the package still exists
+] as const;
+
+/** A fixed key on each side. Written to the mirror and read back from the
+ *  primary: if it comes back, the two "independent" stores are one bucket. */
+export const MIRROR_PROBE_KEY = 'mirror/probe.json';
+export const MIRROR_STATE_KEY = 'mirror/state.json';
+
 export const SECURITY_HOLDER_REPO = 'git+https://github.com/npm/security-holder.git';
 export const NPM_HOLDER_LOGIN = 'npm';
 export const NPM_HOLDER_EMAIL = 'npm@npmjs.com';

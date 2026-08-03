@@ -10,7 +10,7 @@
 import { HTTP_MAX_RETRIES, HTTP_TIMEOUT_MS, USER_AGENT } from './config.ts';
 import { log } from './log.ts';
 import { sha256Hex, signRequest } from './sigv4.ts';
-import type { Store, StoreObject } from './store.ts';
+import type { Store, StoreIdentity, StoreObject } from './store.ts';
 
 export type S3Config = {
   readonly endpoint: string;
@@ -20,13 +20,19 @@ export type S3Config = {
   readonly secretAccessKey: string;
 };
 
-export const S3_ENV_VARS = [
-  'TAPE_S3_ENDPOINT',
-  'TAPE_S3_REGION',
-  'TAPE_S3_BUCKET',
-  'TAPE_S3_KEY_ID',
-  'TAPE_S3_SECRET',
-] as const;
+const S3_ENV_SUFFIXES = ['ENDPOINT', 'REGION', 'BUCKET', 'KEY_ID', 'SECRET'] as const;
+
+/** The primary store's variables. A second store (the mirror) uses the same five
+ *  suffixes under a different prefix, so it inherits the partial-config safety
+ *  below rather than reimplementing it. */
+export const S3_ENV_PREFIX = 'TAPE_S3_';
+export const S3_MIRROR_ENV_PREFIX = 'TAPE_MIRROR_S3_';
+
+export function s3EnvVars(prefix: string = S3_ENV_PREFIX): string[] {
+  return S3_ENV_SUFFIXES.map((s) => `${prefix}${s}`);
+}
+
+export const S3_ENV_VARS = s3EnvVars();
 
 /**
  * Reports which variables are present and which are missing, rather than
@@ -38,23 +44,27 @@ export const S3_ENV_VARS = [
  * reporting success. A rotated or mistyped secret would have looked exactly like
  * a healthy tape.
  */
-export function inspectS3Env(env: NodeJS.ProcessEnv): {
+export function inspectS3Env(
+  env: NodeJS.ProcessEnv,
+  prefix: string = S3_ENV_PREFIX,
+): {
   config: S3Config | null;
   present: string[];
   missing: string[];
 } {
-  const present = S3_ENV_VARS.filter((k) => (env[k] ?? '').length > 0);
-  const missing = S3_ENV_VARS.filter((k) => (env[k] ?? '').length === 0);
-  if (missing.length > 0) return { config: null, present: [...present], missing: [...missing] };
+  const vars = s3EnvVars(prefix);
+  const present = vars.filter((k) => (env[k] ?? '').length > 0);
+  const missing = vars.filter((k) => (env[k] ?? '').length === 0);
+  if (missing.length > 0) return { config: null, present, missing };
   return {
     config: {
-      endpoint: (env['TAPE_S3_ENDPOINT'] as string).replace(/\/+$/, ''),
-      region: env['TAPE_S3_REGION'] as string,
-      bucket: env['TAPE_S3_BUCKET'] as string,
-      accessKeyId: env['TAPE_S3_KEY_ID'] as string,
-      secretAccessKey: env['TAPE_S3_SECRET'] as string,
+      endpoint: (env[`${prefix}ENDPOINT`] as string).replace(/\/+$/, ''),
+      region: env[`${prefix}REGION`] as string,
+      bucket: env[`${prefix}BUCKET`] as string,
+      accessKeyId: env[`${prefix}KEY_ID`] as string,
+      secretAccessKey: env[`${prefix}SECRET`] as string,
     },
-    present: [...present],
+    present,
     missing: [],
   };
 }
@@ -113,6 +123,13 @@ export class S3Store implements Store {
 
   constructor(cfg: S3Config) {
     this.#cfg = cfg;
+  }
+
+  /** Endpoint and bucket only — never the credentials. This is read by the mirror
+   *  to prove the second copy is not the first one under another name, and it
+   *  ends up in logs and in mirror/state.json. */
+  get identity(): StoreIdentity {
+    return { endpoint: this.#cfg.endpoint, bucket: this.#cfg.bucket };
   }
 
   /** Transient-failure stats for the run summary. */

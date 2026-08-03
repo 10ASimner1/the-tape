@@ -11,11 +11,12 @@ import { Healthcheck } from './healthcheck.ts';
 import { log, writeStepSummary } from './log.ts';
 import { build } from './index/build.ts';
 import * as ledgerMod from './ledger.ts';
+import * as mirrorMod from './mirror.ts';
 import { collect, render } from './index/digest.ts';
 import { syncOsv } from './osv.ts';
 import { record } from './run.ts';
 import { FsStore } from './store.fs.ts';
-import { inspectS3Env, S3Store } from './store.s3.ts';
+import { inspectS3Env, S3_MIRROR_ENV_PREFIX, S3Store } from './store.s3.ts';
 import { keys, runIdFrom, type Store } from './store.ts';
 
 /** MEASURED: ~103,000 seq per 24h. Deliberately rounded UP — over-reaching
@@ -68,6 +69,95 @@ function makeStore(): Store {
     `no object store configured. Set ${missing.join(', ')} (see .env.example), ` +
       `or pass --local to write to the filesystem deliberately.`,
   );
+}
+
+/**
+ * Chooses the SECOND store, with the same discipline as makeStore().
+ *
+ * Note what is fatal: no mirror configured at all. A `mirror` run that finds
+ * nothing to copy to and exits zero is precisely the failure that made a partial
+ * S3 config fatal in the first place — the alarm points the wrong way, and the
+ * backup that does not exist looks healthy.
+ */
+function makeMirrorStore(): Store {
+  const localDir = flag('mirror-local') ?? env['TAPE_MIRROR_DIR'];
+  const { config, present, missing } = inspectS3Env(env, S3_MIRROR_ENV_PREFIX);
+
+  if (localDir !== undefined && config === null) {
+    log.info('mirror store', { kind: 'fs', root: localDir });
+    return new FsStore(localDir);
+  }
+  if (config !== null) {
+    log.info('mirror store', { kind: 's3', bucket: config.bucket, region: config.region });
+    return new S3Store(config);
+  }
+  if (present.length > 0) {
+    throw new Error(
+      `the mirror is only partially configured: ${present.length} of ` +
+        `${present.length + missing.length} variables set, missing ${missing.join(', ')}.`,
+    );
+  }
+  throw new Error(
+    `no mirror configured, so there is nothing to copy to. Set ${missing.join(', ')}, or pass ` +
+      `--mirror-local <dir> to copy to disk. Refusing to exit zero having backed up nothing.`,
+  );
+}
+
+/**
+ * Copies whatever the mirror is missing, and reports what it cannot decide.
+ *
+ * Read-only on the primary by construction: everything it writes goes to the
+ * mirror, including its own bookkeeping.
+ */
+async function runMirror(primary: Store): Promise<void> {
+  const target = makeMirrorStore();
+  mirrorMod.assertDistinctConfig(primary, target);
+  mirrorMod.assertSamePrimary(await mirrorMod.readState(target), primary);
+
+  const verifyFlag = flag('verify');
+  const maxObjects = flag('max-objects');
+  const report = await mirrorMod.mirror({
+    primary,
+    mirror: target,
+    now: new Date(),
+    repair: argv.includes('--repair'),
+    ...(verifyFlag !== undefined
+      ? { verify: verifyFlag === 'all' ? ('all' as const) : Number(verifyFlag) }
+      : {}),
+    ...(maxObjects !== undefined ? { maxObjects: Number(maxObjects) } : {}),
+  });
+
+  log.info('mirror complete', {
+    copied: report.copied, bytes: report.bytes, mismatched: report.mismatched,
+    vanished: report.vanished, verified: report.verified,
+    verifyFailures: report.verifyFailures.length, complete: report.complete,
+  });
+
+  await writeStepSummary([
+    `### tape: mirror`,
+    '',
+    `| metric | value |`,
+    `| --- | --- |`,
+    `| objects copied | ${report.copied} |`,
+    `| bytes copied | ${report.bytes} |`,
+    `| size mismatches | ${report.mismatched} |`,
+    `| vanished | ${report.vanished} |`,
+    `| deep-verified | ${report.verified} (${report.verifyFailures.length} failed) |`,
+    `| swept every prefix | ${report.complete} |`,
+  ]);
+
+  // A size mismatch means one side is corrupt and which one is a human decision,
+  // so this fails rather than guessing. An incomplete sweep does NOT fail: the
+  // next run resumes from a fresh diff, which is the whole point of holding no
+  // state. Nothing here is ever a reason to touch the primary.
+  const defects = report.mismatched + report.vanished + report.verifyFailures.length;
+  if (defects > 0) {
+    throw new Error(
+      `mirror found ${defects} discrepancy(ies): ${report.mismatched} size mismatch(es), ` +
+        `${report.vanished} vanished, ${report.verifyFailures.length} hash mismatch(es). ` +
+        `Nothing was repaired — pass --repair only after deciding which side is right.`,
+    );
+  }
 }
 
 async function bootstrap(store: Store): Promise<void> {
@@ -279,6 +369,95 @@ async function verifyChainFromRepo(store: Store | null): Promise<void> {
   if (total > 0) throw new Error(`chain verification found ${total} defect(s)`);
 }
 
+/**
+ * Rebuilds the archive from the mirror alone, and checks the result.
+ *
+ * An untested backup is a hope, not a backup. This is Part III §6's restore drill
+ * and M4's "full rebuild-from-raw" acceptance criterion, and it is almost
+ * entirely a composition of modes that already exist — build() has always taken a
+ * Store, so pointing it at the mirror is the whole trick.
+ */
+async function restoreDrill(): Promise<void> {
+  // THE most important line in this mode. A restore drill with the primary
+  // available is not a drill: every fallback silently works and you learn
+  // nothing. The workflow enforces this too, by not providing the credentials.
+  if (inspectS3Env(env).present.length > 0) {
+    throw new Error(
+      'refusing to run a restore drill with the primary store configured. Unset the TAPE_S3_* ' +
+        'variables. A drill that can still reach the primary proves nothing — every fallback ' +
+        'would quietly succeed against the archive you are pretending to have lost.',
+    );
+  }
+
+  const target = makeMirrorStore();
+  const into = flag('into') ?? '.tape-restore';
+  const date = flag('date') ?? new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+
+  // 1. The cursor is NOT mirrored, so this is re-derived from the feed keys —
+  //    which means the drill exercises that recovery path every single time.
+  const recovered = await cursorMod.recoverFromArchive(target);
+  if (recovered === null) throw new Error('the mirror holds no feed objects; nothing to restore');
+
+  const manifests = await ledgerMod.readManifests(target, new Date(`${date}T00:00:00Z`));
+  const highest = manifests.reduce((n, m) => Math.max(n, m.manifest.lastSeq), 0);
+  log.info('cursor re-derived from the mirror', { lastSeq: recovered, manifestsThatDay: manifests.length });
+
+  // 2. If the index builds from the mirror, the mirror is a working archive.
+  const { mkdir } = await import('node:fs/promises');
+  await mkdir(into, { recursive: true });
+  const dbPath = `${into}/index.sqlite`;
+  const stats = await build(target, dbPath);
+
+  // 3. Re-render the day and compare against what was published at the time.
+  const { DatabaseSync } = await import('node:sqlite');
+  const db = new DatabaseSync(dbPath);
+  const rebuilt = render(collect(db, date));
+  db.close();
+
+  const { readFile, writeFile } = await import('node:fs/promises');
+  await writeFile(`${into}/${date}.md`, rebuilt.markdown, 'utf8');
+
+  let published: string | null = null;
+  try {
+    published = await readFile(`digests/${date}.md`, 'utf8');
+  } catch {
+    log.warn('no committed digest to compare against', { date });
+  }
+
+  // The graveyard is the hard assertion: it derives purely from observations, so
+  // it must reproduce exactly. The typosquat section depends on the pinned
+  // high-impact list, which can legitimately have moved since — a difference
+  // there is information, not a failure.
+  const graveyard = (text: string) => text.split(/^## /m).find((s) => /^graveyard/i.test(s)) ?? '';
+  let graveyardMatches: boolean | null = null;
+  if (published !== null) {
+    graveyardMatches = graveyard(published).trim() === graveyard(rebuilt.markdown).trim();
+    if (!graveyardMatches) log.error('the rebuilt graveyard differs from the published one', { date });
+    else if (published !== rebuilt.markdown) {
+      log.info('digest differs outside the graveyard (typosquat list may have moved)', { date });
+    }
+  }
+
+  // 4. And the chain, against the ledger committed in this repo.
+  const chain = ledgerMod.verifyChain(
+    ledgerMod.transcribe(date, manifests),
+  );
+
+  log.info('restore drill complete', {
+    into, date,
+    lastSeq: recovered,
+    manifestsLastSeq: highest,
+    events: stats.events,
+    packages: stats.packages,
+    graveyardMatches,
+    chainDefects: chain.defects,
+  });
+
+  if (graveyardMatches === false || chain.defects > 0) {
+    throw new Error('restore drill FAILED: the mirror did not reproduce the published record');
+  }
+}
+
 async function recoverCursor(store: Store): Promise<void> {
   const recovered = await cursorMod.recoverFromArchive(store);
   if (recovered === null) throw new Error('no feed objects in the archive to recover from');
@@ -307,7 +486,9 @@ async function recoverCursor(store: Store): Promise<void> {
  * for it would put it in the environment of jobs that have no business holding
  * it, which is the opposite of least privilege.
  */
-const SALT_FREE_MODES = new Set(['recover-cursor', 'ledger', 'verify-chain']);
+const SALT_FREE_MODES = new Set([
+  'recover-cursor', 'ledger', 'verify-chain', 'mirror', 'restore-drill',
+]);
 
 async function main(): Promise<void> {
   const mode = argv[2] ?? 'record';
@@ -332,9 +513,18 @@ async function main(): Promise<void> {
     return;
   }
 
+  // The drill deliberately runs with NO primary, so it must not construct one.
+  if (mode === 'restore-drill') {
+    await restoreDrill();
+    return;
+  }
+
   const store = makeStore();
 
   switch (mode) {
+    case 'mirror':
+      await runMirror(store);
+      return;
     case 'ledger':
       await writeLedger(store);
       return;
@@ -390,7 +580,7 @@ async function main(): Promise<void> {
     default:
       throw new Error(
         `unknown mode "${mode}". Use: bootstrap | record | index | store-check | ` +
-          `recover-cursor | ledger | verify-chain`,
+          `recover-cursor | ledger | verify-chain | mirror | restore-drill`,
       );
   }
 }

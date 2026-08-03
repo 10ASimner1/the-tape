@@ -5,15 +5,21 @@
 
 import { constants } from 'node:fs';
 import { mkdir, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, join, posix, relative, sep } from 'node:path';
+import { dirname, join, posix, relative, resolve, sep } from 'node:path';
 
-import type { Store, StoreObject } from './store.ts';
+import type { Store, StoreIdentity, StoreObject } from './store.ts';
 
 export class FsStore implements Store {
   readonly #root: string;
 
   constructor(root: string) {
     this.#root = root;
+  }
+
+  /** So a local mirror pointed at the same directory as the primary is refused
+   *  by configuration, before a single object is copied. */
+  get identity(): StoreIdentity {
+    return { endpoint: 'file', bucket: resolve(this.#root) };
   }
 
   #path(key: string): string {

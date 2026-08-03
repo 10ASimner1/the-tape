@@ -13,9 +13,10 @@ import type { Gap, Observation, Row } from '../src/observation.ts';
 import { setSaltForTesting } from '../src/pii.ts';
 import type { PackumentResult } from '../src/registry.ts';
 import { FsStore } from '../src/store.fs.ts';
-import { keys, type Store } from '../src/store.ts';
+import { keys } from '../src/store.ts';
 import { record } from '../src/run.ts';
 import { packument } from './fixtures.ts';
+import { FailingPutStore } from './stores.ts';
 
 setSaltForTesting('test-salt-0123456789abcdef');
 
@@ -37,32 +38,6 @@ function serve(fixture = 'left-pad'): (name: string) => Promise<PackumentResult>
   return async () => ({
     outcome: 'ok', status: 200, doc, raw, etag: null, bytes: raw.length, error: null,
   });
-}
-
-/**
- * Delegates to a real store but fails selected writes.
- *
- * A Proxy cannot be used here: FsStore holds private class fields, so calling a
- * method with the proxy as receiver throws "Receiver must be an instance of".
- */
-class FailingPutStore implements Store {
-  readonly #inner: Store;
-  readonly #fails: (key: string) => boolean;
-
-  constructor(inner: Store, fails: (key: string) => boolean) {
-    this.#inner = inner;
-    this.#fails = fails;
-  }
-
-  get(key: string) { return this.#inner.get(key); }
-  list(prefix: string) { return this.#inner.list(prefix); }
-  delete(key: string) { return this.#inner.delete(key); }
-  putIfAbsent(key: string, body: Uint8Array) { return this.#inner.putIfAbsent(key, body); }
-
-  async put(key: string, body: Uint8Array): Promise<void> {
-    if (this.#fails(key)) throw new Error(`object store unavailable: ${key}`);
-    return this.#inner.put(key, body);
-  }
 }
 
 async function readRows(store: FsStore, prefix: string): Promise<Row[]> {

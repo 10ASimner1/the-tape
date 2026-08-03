@@ -1,0 +1,79 @@
+name: mirror
+
+# The second copy. Part III §6 wants two copies of the archive at all times, on
+# an independent provider with an independent credential and an independent
+# billing failure domain — the threat is not a subtle attacker, it is a closed or
+# compromised account taking the whole moat with it.
+#
+# DAILY, not monthly. Monthly leaves roughly a gigabyte and 78,000 objects
+# unmirrored if the primary account dies the day before a sync; daily leaves ~36
+# MB. Listing is free on B2 (Class B/C transactions), Actions is free on public
+# repos, and the copy is a diff — so the extra cadence costs nothing.
+#
+# Scheduled well away from the recorder (:07,:22,:37,:52) and the index (03:23).
+on:
+  schedule:
+    - cron: "41 5 * * *"
+  workflow_dispatch:
+    inputs:
+      verify:
+        description: "Deep-verify N objects by hash, or 'all' for the full drill."
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tape-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    # Under the 6h job cap. The mode stops on its own budget and the next run
+    # resumes from a fresh diff, so being cut off is a delay, never a loss.
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      # No dependency install: zero runtime dependencies, and deliberately NO
+      # third-party sync action. An rclone-style action would put a fresh
+      # supply-chain dependency inside the job that copies the archive, which is
+      # exactly backwards for a project that exists to record that attack class.
+      #
+      # `inputs.verify` reaches the process through the ENVIRONMENT, never
+      # interpolated into the shell line — this job holds both sets of
+      # credentials, and an unquoted ${{ }} in a run: block is the classic
+      # Actions injection.
+      - name: Copy whatever the mirror is missing
+        run: |
+          if [ -n "${VERIFY:-}" ]; then
+            node src/main.ts mirror --verify "$VERIFY"
+          else
+            node src/main.ts mirror
+          fi
+        env:
+          VERIFY: ${{ inputs.verify }}
+          # The primary is only ever READ here. Once a read-only B2 application
+          # key exists, point TAPE_S3_KEY_ID/SECRET at it and this job loses the
+          # ability to touch the archive at all — the split is expressed by which
+          # secret is mapped, exactly as index.yml expresses its own.
+          TAPE_S3_ENDPOINT: ${{ secrets.TAPE_S3_ENDPOINT }}
+          TAPE_S3_REGION: ${{ secrets.TAPE_S3_REGION }}
+          TAPE_S3_BUCKET: ${{ secrets.TAPE_S3_BUCKET }}
+          TAPE_S3_KEY_ID: ${{ secrets.TAPE_S3_KEY_ID }}
+          TAPE_S3_SECRET: ${{ secrets.TAPE_S3_SECRET }}
+          TAPE_MIRROR_S3_ENDPOINT: ${{ secrets.TAPE_MIRROR_S3_ENDPOINT }}
+          TAPE_MIRROR_S3_REGION: ${{ secrets.TAPE_MIRROR_S3_REGION }}
+          TAPE_MIRROR_S3_BUCKET: ${{ secrets.TAPE_MIRROR_S3_BUCKET }}
+          TAPE_MIRROR_S3_KEY_ID: ${{ secrets.TAPE_MIRROR_S3_KEY_ID }}
+          TAPE_MIRROR_S3_SECRET: ${{ secrets.TAPE_MIRROR_S3_SECRET }}
+          # No TAPE_PII_SALT. This job already concentrates both sets of store
+          # credentials; it must not also hold the one secret that cannot be
+          # regenerated. The mirror copies bytes and never parses a packument.
