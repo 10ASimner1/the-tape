@@ -36,6 +36,20 @@ export type Cursor = {
    * nothing to point back at them. This is what makes the claim true.
    */
   readonly pendingFeedKey: string | null;
+  /**
+   * The previous run's manifest, which the next manifest names as its parent.
+   *
+   * Carrying the link here rather than deriving it from the archive is what makes
+   * the chain free: no extra read in COMMIT C, and no way for a failed read to
+   * turn into a false break. The cost is a known fork window — a run that dies
+   * between COMMIT C and COMMIT D leaves these stale, so the next run chains to
+   * the wrong parent and two manifests name the same one. That is a fork, it is
+   * detectable, and it is the correct direction to fail in: an append-only
+   * archive must fail toward an EXTRA record, never toward a missing one, because
+   * a missing manifest is indistinguishable from a deleted one. See ledger.ts.
+   */
+  readonly lastManifestRunId: string | null;
+  readonly lastManifestSha256: string | null;
 };
 
 export class CursorRegressionError extends Error {
@@ -60,6 +74,8 @@ export function initial(headSeq: number, now: Date): Cursor {
     bytesWrittenMonth: 0,
     monthKey: monthKeyOf(now),
     pendingFeedKey: null,
+    lastManifestRunId: null,
+    lastManifestSha256: null,
   };
 }
 
@@ -92,7 +108,13 @@ export function advance(cursor: Cursor, receipt: FeedReceipt, now: Date): Cursor
   };
 }
 
-export function withRunComplete(cursor: Cursor, runId: string, now: Date, bytes: number): Cursor {
+export function withRunComplete(
+  cursor: Cursor,
+  runId: string,
+  now: Date,
+  bytes: number,
+  manifestSha256: string,
+): Cursor {
   return {
     ...cursor,
     lastRunId: runId,
@@ -101,6 +123,8 @@ export function withRunComplete(cursor: Cursor, runId: string, now: Date, bytes:
     // work/deferred by this point.
     pendingFeedKey: null,
     bytesWrittenMonth: cursor.bytesWrittenMonth + bytes,
+    lastManifestRunId: runId,
+    lastManifestSha256: manifestSha256,
   };
 }
 
@@ -139,6 +163,12 @@ function normalize(raw: Partial<Cursor>, now: Date): Cursor {
     bytesWrittenMonth: raw.bytesWrittenMonth ?? 0,
     monthKey: raw.monthKey ?? monthKeyOf(now),
     pendingFeedKey: raw.pendingFeedKey ?? null,
+    // A cursor written before the chain existed backfills to null, which the
+    // verifier reads as "chain begins here" — not as a break. Every manifest
+    // written before this commit is therefore a legitimate chain start rather
+    // than evidence of a deletion.
+    lastManifestRunId: raw.lastManifestRunId ?? null,
+    lastManifestSha256: raw.lastManifestSha256 ?? null,
   };
 }
 

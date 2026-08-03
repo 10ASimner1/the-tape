@@ -34,7 +34,7 @@ import type { DrainResult, FeedRow } from './feed.ts';
 import { Limiter } from './http.ts';
 import { decodeJsonl, putJsonl, sha256Hex, ShardWriter } from './jsonl.ts';
 import { log } from './log.ts';
-import { canonicalManifestBytes, type RunManifest } from './manifest.ts';
+import { canonicalManifestBytes, manifestSha256, type RunManifest } from './manifest.ts';
 import { buildObservation, gap, shouldRetainPackument } from './observation.ts';
 import type { Row } from './observation.ts';
 import { assertNoPersonalAddresses, assertNoPII, hashEmail, PIILeakError } from './pii.ts';
@@ -353,6 +353,10 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   const manifest: RunManifest = {
     runId,
     schema: 1,
+    // Read from the cursor, not derived from the archive — see cursor.ts for why
+    // the resulting fork window is the right way to be wrong.
+    prevRunId: cursor.lastManifestRunId,
+    prevManifestSha256: cursor.lastManifestSha256,
     startedAt: now.toISOString(),
     completedAt: new Date().toISOString(),
     sinceSeq: receipt.sinceSeq,
@@ -380,7 +384,9 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   // cannot include them, so the cursor is the only place the total is complete —
   // and the total is what bills.
   const bytesTotal = bytesWritten + manifestBytes.length;
-  cursor = cursorMod.withRunComplete(cursor, runId, new Date(), bytesTotal);
+  cursor = cursorMod.withRunComplete(
+    cursor, runId, new Date(), bytesTotal, manifestSha256(manifestBytes),
+  );
   await cursorMod.write(store, cursor);
 
   // One aggregate line about transient store failures, rather than one per hiccup.

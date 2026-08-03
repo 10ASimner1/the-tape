@@ -17,6 +17,10 @@ import type { RetainedPackument } from './run.ts';
 export type RunManifest = {
   readonly runId: string;
   readonly schema: 1;
+  /** The chain. `null` means "chain begins here": genesis, a manifest written
+   *  before the chain existed, or the run after a `recover-cursor`. */
+  readonly prevRunId: string | null;
+  readonly prevManifestSha256: string | null;
   readonly startedAt: string;
   readonly completedAt: string;
   readonly sinceSeq: number;

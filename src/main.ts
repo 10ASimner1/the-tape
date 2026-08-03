@@ -10,6 +10,7 @@ import { headSeq } from './feed.ts';
 import { Healthcheck } from './healthcheck.ts';
 import { log, writeStepSummary } from './log.ts';
 import { build } from './index/build.ts';
+import * as ledgerMod from './ledger.ts';
 import { collect, render } from './index/digest.ts';
 import { syncOsv } from './osv.ts';
 import { record } from './run.ts';
@@ -192,6 +193,92 @@ async function buildIndex(store: Store): Promise<void> {
   }
 }
 
+/**
+ * Transcribes a day of manifests into `ledger/<date>.jsonl`.
+ *
+ * ALWAYS exits zero, even over a broken chain. The day the chain breaks must not
+ * also be the day the evidence fails to reach git, so anomalies are recorded as
+ * lines here and the alarm is raised by a later step, after the commit.
+ */
+async function writeLedger(store: Store): Promise<void> {
+  const date = flag('date') ?? new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const day = new Date(`${date}T00:00:00Z`);
+
+  const manifests = await ledgerMod.readManifests(store, day);
+  const lines = ledgerMod.transcribe(date, manifests);
+  const anomalies = lines.filter((l): l is ledgerMod.LedgerAnomaly => l.k === 'anomaly');
+
+  const { mkdir, writeFile } = await import('node:fs/promises');
+  await mkdir('ledger', { recursive: true });
+  await writeFile(`ledger/${date}.jsonl`, ledgerMod.formatLedger(lines), 'utf8');
+
+  log.info('ledger written', {
+    date,
+    runs: manifests.length,
+    anomalies: anomalies.length,
+    defects: anomalies.filter(ledgerMod.isDefect).length,
+  });
+}
+
+/**
+ * Checks the chain across the committed ledger, and optionally against the store.
+ *
+ * The default path reads only files in the repo — no credentials, no bucket. That
+ * is the point: the ledger is a public record precisely because anyone holding a
+ * clone can verify it without being trusted with anything.
+ */
+async function verifyChainFromRepo(store: Store | null): Promise<void> {
+  const { readdir, readFile } = await import('node:fs/promises');
+  const from = flag('from');
+
+  let files: string[];
+  try {
+    files = (await readdir('ledger')).filter((f) => f.endsWith('.jsonl')).sort();
+  } catch {
+    throw new Error('no ledger/ directory in this repo; run `ledger` first, or clone the repo');
+  }
+  if (from !== undefined) files = files.filter((f) => f.slice(0, 10) >= from);
+  if (files.length === 0) throw new Error('no ledger files to verify');
+
+  const lines: ledgerMod.LedgerLine[] = [];
+  for (const file of files) {
+    lines.push(...ledgerMod.parseLedger(await readFile(`ledger/${file}`, 'utf8')));
+  }
+
+  const report = ledgerMod.verifyChain(lines);
+  for (const a of report.anomalies) {
+    const at = { runId: a.runId, sibling: a.sibling, detail: a.detail };
+    if (ledgerMod.isDefect(a)) log.error(`chain ${a.kind}`, at);
+    else log.info(`chain ${a.kind}`, at);
+  }
+
+  let storeDefects = 0;
+  if (store !== null) {
+    // The tamper signal that the chain alone cannot give: a manifest sitting in
+    // the bucket that was never committed to the ledger for the day it claims.
+    const committed = new Set(
+      lines.filter((l): l is ledgerMod.LedgerRun => l.k === 'run').map((r) => r.sha256),
+    );
+    for (const file of files) {
+      const day = new Date(`${file.slice(0, 10)}T00:00:00Z`);
+      for (const m of await ledgerMod.readManifests(store, day)) {
+        if (committed.has(m.sha256)) continue;
+        storeDefects++;
+        log.error('manifest in the archive is absent from the committed ledger', {
+          key: m.key, runId: m.manifest.runId, sha256: m.sha256,
+        });
+      }
+    }
+  }
+
+  const total = report.defects + storeDefects;
+  log.info('chain verified', {
+    files: files.length, runs: report.runs, defects: total,
+    scope: store === null ? 'ledger-only' : 'ledger+archive',
+  });
+  if (total > 0) throw new Error(`chain verification found ${total} defect(s)`);
+}
+
 async function recoverCursor(store: Store): Promise<void> {
   const recovered = await cursorMod.recoverFromArchive(store);
   if (recovered === null) throw new Error('no feed objects in the archive to recover from');
@@ -212,13 +299,23 @@ async function recoverCursor(store: Store): Promise<void> {
   await cursorMod.write(store, { ...base, lastSeq: recovered, pendingFeedKey: null });
 }
 
+/**
+ * Modes that provably never hash an address, and so must not demand the salt.
+ *
+ * The salt is the one secret that cannot be regenerated — every maintainer hash
+ * already in the archive derives from it. Requiring it in a mode that has no use
+ * for it would put it in the environment of jobs that have no business holding
+ * it, which is the opposite of least privilege.
+ */
+const SALT_FREE_MODES = new Set(['recover-cursor', 'ledger', 'verify-chain']);
+
 async function main(): Promise<void> {
   const mode = argv[2] ?? 'record';
 
   // Fail here rather than after the first blob is written: without a salt the
   // maintainer hashes would be unsalted, and an unsalted hash of an email is a
   // reversible email.
-  if (env['TAPE_PII_SALT'] === undefined && mode !== 'recover-cursor') {
+  if (env['TAPE_PII_SALT'] === undefined && !SALT_FREE_MODES.has(mode)) {
     throw new Error(
       'TAPE_PII_SALT is not set. Generate one with:\n' +
         '  node -e "console.log(require(\'node:crypto\').randomBytes(32).toString(\'hex\'))"\n' +
@@ -227,9 +324,23 @@ async function main(): Promise<void> {
     );
   }
 
+  // Verifying the chain from the committed ledger is the whole public claim, so
+  // it must run with NO credentials at all. Constructing a store eagerly would
+  // have made that impossible.
+  if (mode === 'verify-chain' && !argv.includes('--store')) {
+    await verifyChainFromRepo(null);
+    return;
+  }
+
   const store = makeStore();
 
   switch (mode) {
+    case 'ledger':
+      await writeLedger(store);
+      return;
+    case 'verify-chain':
+      await verifyChainFromRepo(store);
+      return;
     case 'bootstrap':
       await bootstrap(store);
       return;
@@ -277,7 +388,10 @@ async function main(): Promise<void> {
       return;
     }
     default:
-      throw new Error(`unknown mode "${mode}". Use: bootstrap | record | index | store-check | recover-cursor`);
+      throw new Error(
+        `unknown mode "${mode}". Use: bootstrap | record | index | store-check | ` +
+          `recover-cursor | ledger | verify-chain`,
+      );
   }
 }
 

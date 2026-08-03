@@ -32,7 +32,12 @@ describe('cursor schema drift', () => {
     assert.strictEqual(cursor.lastRunCompletedAt, null);
     assert.strictEqual(cursor.bytesWrittenMonth, 0);
     assert.equal(typeof cursor.monthKey, 'string');
+    // A cursor written before the hash chain existed backfills to null, which the
+    // verifier reads as "chain begins here" rather than as a deleted manifest.
+    assert.strictEqual(cursor.lastManifestRunId, null);
+    assert.strictEqual(cursor.lastManifestSha256, null);
 
+    // This loop covers every field added from here on, automatically. Keep it.
     for (const [k, v] of Object.entries(cursor)) {
       assert.notEqual(v, undefined, `${k} must not be undefined`);
     }
@@ -65,9 +70,11 @@ describe('cursor pending-window lifecycle', () => {
     assert.equal(advanced.pendingFeedKey, 'raw/feed/2026/08/03/100-200.jsonl.gz',
       'the window is in flight until the run finishes');
 
-    const done = cursorMod.withRunComplete(advanced, 'run-1', now, 1234);
+    const done = cursorMod.withRunComplete(advanced, 'run-1', now, 1234, 'a'.repeat(64));
     assert.equal(done.pendingFeedKey, null, 'released only once the run completed');
     assert.equal(done.lastRunId, 'run-1');
+    assert.equal(done.lastManifestRunId, 'run-1', 'the next run chains to this manifest');
+    assert.equal(done.lastManifestSha256, 'a'.repeat(64));
   });
 
   it('refuses to move backwards', () => {

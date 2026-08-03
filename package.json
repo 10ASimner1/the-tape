@@ -15,7 +15,11 @@
     "record": "node --env-file-if-exists=.env.local src/main.ts record",
     "recover-cursor": "node --env-file-if-exists=.env.local src/main.ts recover-cursor",
     "store-check": "node --env-file-if-exists=.env.local src/main.ts store-check",
-    "index": "node --env-file-if-exists=.env.local src/main.ts index"
+    "index": "node --env-file-if-exists=.env.local src/main.ts index",
+    "ledger": "node --env-file-if-exists=.env.local src/main.ts ledger",
+    "//verify-chain": "Deliberately NO --env-file: the whole claim is that anyone with a clone can verify the chain without credentials. Pass --store to additionally check the archive.",
+    "verify-chain": "node src/main.ts verify-chain",
+    "pii-audit": "node scripts/pii-audit.ts"
   },
   "//": "dependencies is intentionally empty. This is a supply-chain-security project; the recorder runs on Node built-ins alone, so there is no lockfile attack surface to be the story about.",
   "dependencies": {},

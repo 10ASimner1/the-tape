@@ -71,6 +71,39 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      # Transcribes the day's run manifests into a hash-chained ledger line per
+      # run. This mode ALWAYS exits zero, even over a broken chain: the day the
+      # chain breaks must not also be the day the evidence fails to reach git.
+      # The alarm is raised in `publish`, after the commit.
+      #
+      # No TAPE_PII_SALT here. Manifests are counts, keys and hashes — nothing to
+      # hash and nothing to redact — so the one secret that cannot be regenerated
+      # stays out of a step that has no use for it.
+      - name: Transcribe the hash ledger
+        run: |
+          if [ -n "${DATE:-}" ]; then
+            node src/main.ts ledger --date "$DATE"
+          else
+            node src/main.ts ledger
+          fi
+        env:
+          DATE: ${{ inputs.date }}
+          TAPE_S3_ENDPOINT: ${{ secrets.TAPE_S3_ENDPOINT }}
+          TAPE_S3_REGION: ${{ secrets.TAPE_S3_REGION }}
+          TAPE_S3_BUCKET: ${{ secrets.TAPE_S3_BUCKET }}
+          TAPE_S3_KEY_ID: ${{ secrets.TAPE_S3_KEY_ID }}
+          TAPE_S3_SECRET: ${{ secrets.TAPE_S3_SECRET }}
+
+      # A SEPARATE artifact from the digest. Sharing one would mean an absent
+      # ledger fails the digest upload (if-no-files-found: error) and vice versa,
+      # coupling two things that must be able to fail independently.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ledger
+          path: ledger/${{ steps.build.outputs.date }}.jsonl
+          if-no-files-found: error
+          retention-days: 7
+
   # Holds `contents: write` and NO store credentials. It cannot read the archive,
   # so a bug in the redaction path has nothing to leak — the separation is
   # enforced by which secrets exist in which job, not by discipline.
@@ -92,23 +125,28 @@ jobs:
           name: digest
           path: digests/
 
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ledger
+          path: ledger/
+
       # An independent check on bytes the build job produced. The digest module
       # already gates its own output; this does not trust that.
       - name: Refuse to publish anything carrying a personal address
         run: node scripts/pii-audit.ts
 
-      - name: Commit the digest
+      - name: Commit the digest and the ledger
         env:
           DIGEST_DATE: ${{ needs.build.outputs.date }}
         run: |
           set -euo pipefail
-          if [ -z "$(git status --porcelain digests/)" ]; then
-            echo "no digest changes"
+          if [ -z "$(git status --porcelain digests/ ledger/)" ]; then
+            echo "no digest or ledger changes"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add digests/
+          git add digests/ ledger/
           git commit -m "tape: digest ${DIGEST_DATE}"
           # Rebase before pushing. Without it a concurrent push to main rejects
           # this one and the day's digest is lost with a green tick — the job
@@ -123,3 +161,13 @@ jobs:
           done
           echo "could not push the digest after 3 attempts" >&2
           exit 1
+
+      # AFTER the commit, deliberately. Evidence before alarm: if this ran first,
+      # the day the chain broke would be the day the record of the break failed to
+      # reach git, which is the one outcome that makes the ledger worthless.
+      #
+      # No credentials. That is the public claim being exercised on every run —
+      # the chain verifies from the committed files alone, so anyone with a clone
+      # can reproduce this exact check without being trusted with anything.
+      - name: Verify the chain
+        run: node src/main.ts verify-chain
