@@ -56,6 +56,11 @@ export type FeedReceipt = {
   readonly rows: number;
   readonly key: string;
   readonly sha256: string;
+  /** Carried so the run's byte accounting can use the REAL stored size. Every
+   *  other shard reports both through `WrittenShard`; the feed blob used to be
+   *  the one write whose size was guessed, which made the spend cap unbuildable. */
+  readonly rawBytes: number;
+  readonly gzBytes: number;
 };
 
 /** MEASURED: `since=now` returns HTTP 400, so the head is read from the DB root. */
@@ -155,6 +160,8 @@ export async function writeFeedBlob(
     rows: drained.rows.length,
     key: shard.key,
     sha256: shard.sha256,
+    rawBytes: shard.rawBytes,
+    gzBytes: shard.gzBytes,
   } as FeedReceipt;
 }
 

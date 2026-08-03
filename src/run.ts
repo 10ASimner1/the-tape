@@ -32,8 +32,9 @@ import type { Cursor } from './cursor.ts';
 import { dedupeByNameKeepingNewest, drain, headSeq, revOf, writeFeedBlob } from './feed.ts';
 import type { DrainResult, FeedRow } from './feed.ts';
 import { Limiter } from './http.ts';
-import { decodeJsonl, putJsonl, ShardWriter } from './jsonl.ts';
+import { decodeJsonl, putJsonl, sha256Hex, ShardWriter } from './jsonl.ts';
 import { log } from './log.ts';
+import { canonicalManifestBytes, type RunManifest } from './manifest.ts';
 import { buildObservation, gap, shouldRetainPackument } from './observation.ts';
 import type { Row } from './observation.ts';
 import { assertNoPersonalAddresses, assertNoPII, hashEmail, PIILeakError } from './pii.ts';
@@ -42,6 +43,24 @@ import { fetchPackument } from './registry.ts';
 import type { PackumentResult } from './registry.ts';
 import { keys, runIdFrom, type Store } from './store.ts';
 import { gunzipSync } from 'node:zlib';
+
+/**
+ * A retained packument, as named in the run manifest.
+ *
+ * These used to appear in the manifest nowhere at all, which made README's claim
+ * that a manifest is "sha256 of everything written" false, and left a hole in the
+ * ledger: a retained packument could be replaced in the bucket with every
+ * manifest still verifying. `written: false` means putIfAbsent found the key
+ * already there — recorded anyway, so the hash is checkable either way, and so
+ * the byte accounting stays honest.
+ */
+export type RetainedPackument = {
+  readonly key: string;
+  /** sha256 of the UNCOMPRESSED redacted text — see jsonl.ts for why not the gzip. */
+  readonly sha256: string;
+  readonly gzBytes: number;
+  readonly written: boolean;
+};
 
 export type RunSummary = {
   readonly runId: string;
@@ -56,7 +75,9 @@ export type RunSummary = {
   readonly versionUnpublishes: number;
   readonly packagesWithYanks: number;
   readonly piiRefused: number;
+  /** Everything written, manifest included — the figure that matches the bill. */
   readonly bytesWritten: number;
+  readonly retained: number;
   readonly mode: 'steady' | 'backlog' | 'triage';
 };
 
@@ -142,7 +163,12 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
 
   // ── STEP 2 — COMMIT A: the irreplaceable bytes become durable ─────────────
   const receipt = await writeFeedBlob(store, drained, now);
-  bytesWritten += receipt.rows * 100;
+  // The REAL stored size. This was `receipt.rows * 100` — not a wild guess, but a
+  // measurement of the wrong quantity: ~100 bytes is a feed row RAW, and gzipped
+  // it is roughly a third of that, so stored bytes were over-counted ~3x. It was
+  // also the only write in the run whose size was estimated rather than measured,
+  // which is precisely why a spend cap could not be built on this number.
+  bytesWritten += receipt.gzBytes;
   log.info('COMMIT A feed blob', { key: receipt.key, rows: receipt.rows });
 
   // ── STEP 3 — COMMIT B: only now may the cursor move ───────────────────────
@@ -175,6 +201,7 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   let packagesWithYanks = 0;
   let piiRefused = 0;
   const remaining: FeedRow[] = [];
+  const retained: RetainedPackument[] = [];
 
   if (recovered.length > 0) {
     await shards.add(gap(runId, 'recovered', now, { detail: `rows=${recovered.length}` }));
@@ -249,6 +276,17 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
             // Keyed by (name, rev), so a re-fetch after a crash writes nothing.
             const { written } = await store.putIfAbsent(packumentKey, gz);
             if (written) bytesWritten += gz.length;
+            // Named and hashed in the manifest even when nothing was written.
+            // `redactPackument` is deterministic for a given (doc, salt), so if
+            // two runs a month apart hash the same (name, rev) differently, npm
+            // mutated a packument under a stable _rev — which is itself a
+            // finding. Hashing the UNCOMPRESSED text, for the reason in jsonl.ts.
+            retained.push({
+              key: packumentKey,
+              sha256: sha256Hex(text),
+              gzBytes: gz.length,
+              written,
+            });
           }
         }
       }
@@ -292,22 +330,27 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
       }
     }
   }
-  await shards.flush();
-  for (const s of shards.shards) bytesWritten += s.gzBytes;
-
   // ── STEP 5 — COMMIT C: deferred queue FIRST, then the manifest ────────────
   // Always rewritten, even when empty — otherwise the entries this run consumed
   // would linger and be reprocessed forever. Overwriting is what removes the need
   // for a delete-capable credential.
   const deduped = dedupeByNameKeepingNewest(remaining);
-  const written = await putJsonl(store, keys.deferred(), deduped, assertNoPII);
-  bytesWritten += written.gzBytes;
   if (deduped.length > 0) {
     await shards.add(gap(runId, 'deferred', now, { detail: `count=${deduped.length}` }));
     log.info('deferred', { count: deduped.length });
   }
 
-  const manifest = {
+  // MUST be the last shards.add() in the run. This gap row used to be added AFTER
+  // this flush, and ShardWriter.add only auto-flushes at SHARD_MAX_ROWS or
+  // SHARD_MAX_BYTES — one row trips neither — so every deferred gap row the tape
+  // ever wrote was buffered and discarded, and was missing from obsShards too.
+  await shards.flush();
+  for (const s of shards.shards) bytesWritten += s.gzBytes;
+
+  const written = await putJsonl(store, keys.deferred(), deduped, assertNoPII);
+  bytesWritten += written.gzBytes;
+
+  const manifest: RunManifest = {
     runId,
     schema: 1,
     startedAt: now.toISOString(),
@@ -315,20 +358,29 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
     sinceSeq: receipt.sinceSeq,
     lastSeq: receipt.lastSeq,
     mode,
-    feedBlob: { key: receipt.key, sha256: receipt.sha256, rows: receipt.rows },
+    feedBlob: {
+      key: receipt.key, sha256: receipt.sha256, rows: receipt.rows,
+      rawBytes: receipt.rawBytes, gzBytes: receipt.gzBytes,
+    },
     obsShards: shards.shards,
+    retained,
     queued: queue.length,
     fetched,
     deferred: remaining.length,
+    // Everything above EXCEPT this manifest — a file cannot state its own size.
+    // The cursor's counter is the one that includes it, so the number an operator
+    // watches for billing is the cursor's, not this one.
     bytesWritten,
   };
-  await store.put(
-    keys.manifest(now, runId),
-    Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8'),
-  );
+  const manifestBytes = canonicalManifestBytes(manifest);
+  await store.put(keys.manifest(now, runId), manifestBytes);
 
   // ── STEP 6 — COMMIT D: record completion ──────────────────────────────────
-  cursor = cursorMod.withRunComplete(cursor, runId, new Date(), bytesWritten);
+  // The manifest's own bytes count here and nowhere else. `manifest.bytesWritten`
+  // cannot include them, so the cursor is the only place the total is complete —
+  // and the total is what bills.
+  const bytesTotal = bytesWritten + manifestBytes.length;
+  cursor = cursorMod.withRunComplete(cursor, runId, new Date(), bytesTotal);
   await cursorMod.write(store, cursor);
 
   // One aggregate line about transient store failures, rather than one per hiccup.
@@ -347,7 +399,10 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
     versionUnpublishes,
     packagesWithYanks,
     piiRefused,
-    bytesWritten,
+    // The complete figure, manifest included, so the number an operator watches
+    // in the step summary is the one that matches the bill.
+    bytesWritten: bytesTotal,
+    retained: retained.length,
     mode,
   };
   log.info('run complete', { ...summary, elapsedMs: Date.now() - startedAt });

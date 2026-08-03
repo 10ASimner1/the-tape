@@ -145,7 +145,17 @@ async function buildIndex(store: Store): Promise<void> {
   if (cursor !== null) {
     const osv = await syncOsv(store, cursor.osvWatermark, now, runId);
     if (osv.watermark !== cursor.osvWatermark && osv.watermark !== null) {
-      await cursorMod.write(store, cursorMod.withOsvWatermark(cursor, osv.watermark));
+      // Re-read before writing, and carry over only this one field.
+      //
+      // syncOsv is an unbounded network operation, and this job (`23 3 * * *`) is
+      // in a DIFFERENT Actions concurrency group from the recorder (`:07,:22,:37,
+      // :52`), so they overlap by design. Writing back the snapshot read above
+      // would clobber a lastSeq or pendingFeedKey that a recording run advanced
+      // in the meantime. Backwards is only duplicates, never loss — but the
+      // cursor also carries monotonic byte accounting for the spend cap, and a
+      // clobbered counter under-counts against a cap.
+      const fresh = (await cursorMod.read(store)) ?? cursor;
+      await cursorMod.write(store, cursorMod.withOsvWatermark(fresh, osv.watermark));
     }
   }
 
@@ -260,6 +270,7 @@ async function main(): Promise<void> {
         `| flagged | ${summary.flagged} |`,
         `| package unpublishes | ${summary.unpublishes} |`,
         `| version unpublishes | ${summary.versionUnpublishes} (across ${summary.packagesWithYanks} packages) |`,
+        `| packuments retained | ${summary.retained} |`,
         `| bytes written | ${summary.bytesWritten} |`,
         `| mode | ${summary.mode} |`,
       ]);
