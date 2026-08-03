@@ -65,11 +65,45 @@ function assertObjectKey(key: string, op: string): void {
   }
 }
 
+/**
+ * Above this share of requests needing a retry, something is actually wrong.
+ *
+ * MEASURED against Backblaze B2: a steady ~0.2-0.5% of PUTs return a transient
+ * 500 and succeed on the first retry. That is normal object-store behaviour and
+ * the retry loop absorbs it — but logging each one as a warning would put half a
+ * dozen warnings in every run, and a channel that is always noisy is a channel
+ * the operator stops reading. Individual retries are info; only an unusual RATE
+ * is a warning.
+ */
+const RETRY_RATE_WARN = 0.05;
+
 export class S3Store implements Store {
   readonly #cfg: S3Config;
+  #requests = 0;
+  #retries = 0;
 
   constructor(cfg: S3Config) {
     this.#cfg = cfg;
+  }
+
+  /** Transient-failure stats for the run summary. */
+  get stats(): { requests: number; retries: number; retryRate: number } {
+    return {
+      requests: this.#requests,
+      retries: this.#retries,
+      retryRate: this.#requests === 0 ? 0 : this.#retries / this.#requests,
+    };
+  }
+
+  /** Logs once per run rather than once per hiccup. */
+  logStats(): void {
+    const { requests, retries, retryRate } = this.stats;
+    const fields = { requests, retries, retryRatePct: Number((retryRate * 100).toFixed(2)) };
+    if (retryRate > RETRY_RATE_WARN && retries > 5) {
+      log.warn('object store is failing more requests than usual', fields);
+    } else {
+      log.info('object store', fields);
+    }
   }
 
   async #send(
@@ -83,9 +117,13 @@ export class S3Store implements Store {
     const query = opts.query ?? {};
     const body = opts.body ?? new Uint8Array(0);
 
+    this.#requests++;
     let lastErr: unknown;
     for (let attempt = 0; attempt <= HTTP_MAX_RETRIES; attempt++) {
-      if (attempt > 0) await sleep(Math.min(20_000, 400 * 2 ** attempt) * (0.5 + Math.random()));
+      if (attempt > 0) {
+        this.#retries++;
+        await sleep(Math.min(20_000, 400 * 2 ** attempt) * (0.5 + Math.random()));
+      }
 
       // Re-signed on every attempt: a signature carries a timestamp and expires.
       const { headers, encodedPath, canonicalQuery } = signRequest({
@@ -130,11 +168,12 @@ export class S3Store implements Store {
           throw new S3Error(res.status, method, key, text);
         }
         lastErr = new S3Error(res.status, method, key, text);
-        log.warn('s3 retryable', { op: method, status: res.status, attempt });
+        // Expected at a low rate; the aggregate in logStats() is the real signal.
+        log.info('s3 retryable', { op: method, status: res.status, attempt });
       } catch (err) {
         if (err instanceof S3Error) throw err;
         lastErr = err;
-        log.warn('s3 error', { op: method, attempt, kind: (err as Error).name });
+        log.info('s3 error', { op: method, attempt, kind: (err as Error).name });
       }
     }
     throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));

@@ -310,6 +310,9 @@ export async function record(opts: RunOptions): Promise<RunSummary> {
   cursor = cursorMod.withRunComplete(cursor, runId, new Date(), bytesWritten);
   await cursorMod.write(store, cursor);
 
+  // One aggregate line about transient store failures, rather than one per hiccup.
+  if ('logStats' in store && typeof store.logStats === 'function') store.logStats();
+
   const summary: RunSummary = {
     runId,
     sinceSeq: receipt.sinceSeq,
