@@ -120,6 +120,9 @@ export class S3Store implements Store {
   readonly #cfg: S3Config;
   #requests = 0;
   #retries = 0;
+  #classA = 0;
+  #classB = 0;
+  #classC = 0;
 
   constructor(cfg: S3Config) {
     this.#cfg = cfg;
@@ -132,19 +135,37 @@ export class S3Store implements Store {
     return { endpoint: this.#cfg.endpoint, bucket: this.#cfg.bucket };
   }
 
-  /** Transient-failure stats for the run summary. */
-  get stats(): { requests: number; retries: number; retryRate: number } {
+  /**
+   * Transient-failure stats, and the transaction classes behind them.
+   *
+   * The class split exists because Class B is the limit that actually binds and
+   * nothing in this project measured it until it stopped the tape. Providers
+   * price and cap by class, not by request:
+   *   A — PUT. Free and unlimited on B2.
+   *   B — GET and HEAD. 2,500/day free, and a $0-capped account HARD-STOPS.
+   *   C — LIST. Its own separate 2,500/day.
+   */
+  get stats(): {
+    requests: number; retries: number; retryRate: number;
+    classA: number; classB: number; classC: number;
+  } {
     return {
       requests: this.#requests,
       retries: this.#retries,
       retryRate: this.#requests === 0 ? 0 : this.#retries / this.#requests,
+      classA: this.#classA,
+      classB: this.#classB,
+      classC: this.#classC,
     };
   }
 
   /** Logs once per run rather than once per hiccup. */
   logStats(): void {
-    const { requests, retries, retryRate } = this.stats;
-    const fields = { requests, retries, retryRatePct: Number((retryRate * 100).toFixed(2)) };
+    const { requests, retries, retryRate, classA, classB, classC } = this.stats;
+    const fields = {
+      requests, retries, retryRatePct: Number((retryRate * 100).toFixed(2)),
+      classA, classB, classC,
+    };
     if (retryRate > RETRY_RATE_WARN && retries > 5) {
       log.warn('object store is failing more requests than usual', fields);
     } else {
@@ -164,6 +185,14 @@ export class S3Store implements Store {
     const body = opts.body ?? new Uint8Array(0);
 
     this.#requests++;
+    // Counted per LOGICAL request, alongside #requests, so a retry does not
+    // inflate the class tally — a provider bills the operation, not the attempt.
+    // An empty key means a bucket listing, which is Class C; everything else with
+    // a key is addressed at an object.
+    if (method === 'PUT' || method === 'DELETE') this.#classA++;
+    else if (method === 'GET' && key === '') this.#classC++;
+    else this.#classB++;
+
     let lastErr: unknown;
     for (let attempt = 0; attempt <= HTTP_MAX_RETRIES; attempt++) {
       if (attempt > 0) {

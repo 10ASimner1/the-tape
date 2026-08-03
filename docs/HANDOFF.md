@@ -179,10 +179,25 @@ the recorder cannot read its own cursor.
 not help — the mirror must `GET` each object exactly once regardless of when — so
 the fix was to cut object count.
 
-**Retained packuments are now batched into shards**, one set per run under
-`private/packuments/`. MEASURED on 297 real packuments: 6 objects instead of 297.
-The `HEAD` is gone with them, because a shard key is unique per run and is written
-with a plain `put`. `docs/assumptions.md` §5 has the numbers.
+**Both writers now shard properly.** Retained packuments go into shards under
+`private/packuments/`, and the shard caps rose from 250 rows / 4 MB to 2,000 rows
+/ 16 MB after measuring that obs shards were hitting the ROW cap at 227 rows while
+using a third of their byte budget.
+
+MEASURED by re-sharding the real archive: **18 objects where there were 1,704 —
+95x fewer.** The `HEAD` is gone with them, because a shard key is unique per run
+and is written with a plain `put`. `docs/assumptions.md` §5 has the numbers.
+
+**The second wall, and why the caps moved.** `main.ts` calls `build(store, dbPath)`
+without `opts.since`, so the nightly index GETs **every** object under `raw/obs/`,
+forever. At the old 250-row cap that grew >=84 objects/day and would have crossed
+the daily allowance around **day 24** — at 03:23 UTC, taking the recorder down for
+the rest of the day with it. At 2,000 rows it grows ~6/day, which buys over a year.
+
+Do not "fix" this by passing `since`: `prior` is rebuilt from scratch every run,
+so starting mid-history would leave packages without their previous observation
+and silently mis-derive publishes as first sightings. A real incremental build
+needs persisted derivation state.
 
 **`mirror.yml` is still manual-only** until one measured day confirms the new
 rate — and its first scheduled run will have a backlog to catch up, so use
@@ -245,18 +260,24 @@ in git, and a graded spend cap. 144 tests. Zero runtime dependencies.
 1. **A no-delete B2 credential**, and a separate **read-only** one for the mirror job. The recorder never deletes and the mirror only reads the primary, so both can be reissued with narrower scopes — via the B2 API, since the web UI cannot express it. Point `mirror.yml`'s `TAPE_S3_KEY_ID`/`SECRET` at the read-only key and that job loses the ability to touch the archive at all.
 2. **A privacy notice.** The repo is public and the project processes maintainer data at scale.
 3. **Re-derive the storage constants from `usage`.** `node src/main.ts usage` now reports real stored bytes per prefix. The budget's soft/hard fractions should be tuned against that, never against §6 — those are the constants this project already got wrong by 13× from a desk estimate.
-4. **A whole-archive PII sweep.** README still says one does not exist. The daily mirror is the only job that reads every object, so it is nearly free to add there.
-5. **M4 acceptance:** seven unbroken days, and a `SIGKILL` mid-run drill. The rebuild-from-raw drill is now a command: `npm run restore-drill`.
+4. **Make the nightly index build incremental.** It re-reads all of `raw/obs/`
+   every night and that term grows forever. The shard caps bought over a year; the
+   real fix needs persisted derivation state, and note that persisting a growing
+   SQLite file into a keep-all-versions bucket would retain a full copy nightly.
+5. **A whole-archive PII sweep.** README still says one does not exist. The mirror is the only job that reads every object, so it is nearly free to add there.
+6. **M4 acceptance:** seven unbroken days, and a `SIGKILL` mid-run drill. The rebuild-from-raw drill is now a command: `npm run restore-drill`.
 
 **Watch:** the scheduled-run firing rate over a full day, now that the cron is
 `7,22,37,52`. And the `storage` row in each run's step summary — it is printed on
 every run, not only degraded ones, precisely so the number is watchable before it
 becomes a problem.
 
-**Watch harder:** the B2 **Class B transaction** count, which is the binding
-constraint and is not the one anything in this repo measures. See §6 — the spend
-cap in `src/budget.ts` guards stored BYTES, and bytes turned out not to be what
-runs out first.
+**Watch harder:** the B2 **Class B transaction** count. It is the binding
+constraint, and the spend cap in `src/budget.ts` guards stored BYTES — which
+turned out not to be what runs out first. Every run now logs `classA`/`classB`/
+`classC` on its `object store` line, so it is finally a number you can watch
+rather than one you discover from an email. `usage.objects` is the other one:
+object count is the cost driver, not bytes.
 
 **On reviews:** M3 shipped, then an adversarial review found nine real defects in
 it — including two that made the public digest quietly wrong. `backfill` is

@@ -4,6 +4,12 @@
  * Sharding bounds the blast radius of a mid-run kill: at most one shard's worth
  * of in-flight rows is lost, and those names are still in raw/feed, so the next
  * run reconstructs them. Delay, not loss.
+ *
+ * Note the recovery cost does not actually scale with shard size — a mid-run kill
+ * re-queues the ENTIRE pending feed window via cursor.pendingFeedKey either way.
+ * Shard size only decides how many already-written rows get duplicated on the
+ * retry. What it does decide is object count, and object count is what the
+ * object store's free tier limits. See SHARD_MAX_ROWS in config.ts.
  */
 
 import { gzipSync } from 'node:zlib';

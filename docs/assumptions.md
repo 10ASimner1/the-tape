@@ -170,7 +170,17 @@ MEASURED on the live bucket the day it happened, at 44.5 MB total:
 Two consequences for the design:
 
 1. **The mirror must `GET` every object exactly once, ever, so its cost is set by object COUNT and cannot be rescheduled away.** Deferring `private/` to a weekly sweep does not reduce the total; it concentrates it into one much worse day.
-2. **Only reducing object count fixes this.** `raw/obs/` holds 19 MB in 52 objects; `private/` holds 20 MB in 1,652. Same bytes, ~30x the request cost, purely from layout. Batching retained packuments into shards is therefore not an optimisation — it is what makes a second copy affordable at all.
+2. **Only reducing object count fixes this.** `raw/obs/` held 19 MB in 52 objects; `private/` held 20 MB in 1,652. Same bytes, ~30x the request cost, purely from layout. Batching retained packuments into shards is therefore not an optimisation — it is what makes a second copy affordable at all.
+
+**Fixed 2026-08-03.** Packuments now shard, and the shard caps moved from 250 rows / 4 MB to 2,000 / 16 MB — measured, because obs shards were hitting the ROW cap at a mean of 227 rows while using only 1.28 MB of their 4 MB byte budget. Re-sharding the real archive:
+
+| | objects before | objects after |
+|---|---|---|
+| `raw/obs/` (11,809 rows) | 52 | **6** |
+| `private/` (1,652 packuments) | 1,652 | **12** |
+| total | 1,704 | **18 — 95x fewer** |
+
+Note this also closed a wall nobody had noticed: `main.ts` calls `build()` without `opts.since`, so the nightly index re-reads every `raw/obs/` object forever. At 250 rows that term grew >=84 objects/day and would have exhausted the daily allowance around **day 24**, at 03:23 UTC, taking the recorder down with it for the rest of each day.
 
 Note the bucket lifecycle is **keep all versions**, which is right for an append-only archive but means an unconditional overwrite is not free: it creates a second retained version. So the `HEAD` could not simply be dropped on a content-addressed key.
 

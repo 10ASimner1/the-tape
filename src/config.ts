@@ -105,8 +105,35 @@ export const NEW_PACKAGE_WINDOW_MS = 48 * 60 * 60_000;
 export const MAX_RETAINED_PACKUMENT_BYTES = 512 * 1024;
 
 // ── Storage ──────────────────────────────────────────────────────────────────
-export const SHARD_MAX_ROWS = 250;
-export const SHARD_MAX_BYTES = 4 * 1024 * 1024;
+/**
+ * Shard size, shared by the observation and packument writers.
+ *
+ * These are REQUEST-cost constants, not storage constants. Object count is what
+ * B2's free tier actually limits — 2,500 Class B transactions a day — and both
+ * the nightly index rebuild and the mirror pay one GET per object.
+ *
+ * MEASURED on the live archive at 250/4 MB: obs shards averaged 227 rows and
+ * 1.28 MB raw, so ROWS bound and two thirds of the byte budget went unused. At
+ * npm's ~20,900 changed packages/day that floor of 250 forced >=84 obs objects a
+ * day, and the nightly rebuild re-reads every one of them, forever. That term
+ * alone would have crossed the daily allowance around day 24 — at 03:23 UTC,
+ * taking the recorder down for the rest of the day with it.
+ *
+ * 2,000 rows keeps ROWS binding for observations at ~11.6 MB raw, an ~8x cut in
+ * object count. For packuments the 16 MB byte cap binds first at ~130 documents.
+ *
+ * Blast radius does NOT scale with this. A mid-run kill re-queues the whole
+ * pending feed window via cursor.pendingFeedKey regardless of shard size, so a
+ * bigger shard only changes how many already-written rows get duplicated on the
+ * retry — never how much has to be re-fetched.
+ *
+ * The real fix for the rebuild is an incremental index, which needs persisted
+ * derivation state (`prior` is rebuilt from scratch every run, so `build`'s
+ * `since` seam would silently mis-derive publishes as first sightings). This buys
+ * well over a year to do that properly.
+ */
+export const SHARD_MAX_ROWS = 2_000;
+export const SHARD_MAX_BYTES = 16 * 1024 * 1024;
 
 /**
  * Retained: the cases where the packument is SMALL and IRREPLACEABLE.
