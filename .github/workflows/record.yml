@@ -1,0 +1,60 @@
+name: record
+
+# Twice hourly, off the top of the hour. GitHub documents that scheduled runs are
+# delayed or dropped under load and that "the start of every hour" is the worst
+# time — so a second firing gives every hour a spare. Work is proportional to
+# elapsed change rather than to run count, so the extra run costs almost nothing
+# when the first one succeeded.
+on:
+  schedule:
+    - cron: "9,39 * * * *"
+  workflow_dispatch:
+
+# The recorder needs NO write access to this repository. All state lives in the
+# object store, so a compromised dependency or a hijacked action cannot rewrite
+# the workflow that holds the credentials. Alerting is external (healthchecks.io),
+# which also catches the case an in-workflow alerter never could: the workflow
+# itself being disabled.
+permissions:
+  contents: read
+
+# At most one recorder at a time. Note this CANCELS a pending run rather than
+# queueing it, so nothing may be keyed to the wall-clock hour — object names are
+# derived from run id and seq range instead.
+concurrency:
+  group: tape-recorder
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest # never a larger runner: those are billed even on public repos
+    timeout-minutes: 50 # the run's own soft deadline is 45m; this is the backstop
+
+    steps:
+      # Third-party actions are pinned by full commit SHA, never by tag.
+      # Tag hijacking of popular actions is a live, recurring attack — and this
+      # project exists to record that class of attack, so practising it matters.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # the job never pushes; don't leave a token in .git/config
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      # There is no dependency installation step, because there are no runtime
+      # dependencies. Nothing is fetched from npm to run the recorder that watches npm.
+      - name: Record
+        run: node src/main.ts record
+        env:
+          TAPE_PII_SALT: ${{ secrets.TAPE_PII_SALT }}
+          TAPE_S3_ENDPOINT: ${{ secrets.TAPE_S3_ENDPOINT }}
+          TAPE_S3_REGION: ${{ secrets.TAPE_S3_REGION }}
+          TAPE_S3_BUCKET: ${{ secrets.TAPE_S3_BUCKET }}
+          TAPE_S3_KEY_ID: ${{ secrets.TAPE_S3_KEY_ID }}
+          TAPE_S3_SECRET: ${{ secrets.TAPE_S3_SECRET }}
+          TAPE_REPO_URL: ${{ secrets.TAPE_REPO_URL }}
+          TAPE_CONTACT: ${{ secrets.TAPE_CONTACT }}
+          TAPE_HEALTHCHECK_URL: ${{ secrets.TAPE_HEALTHCHECK_URL }}

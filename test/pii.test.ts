@@ -123,7 +123,7 @@ describe('hashEmail', () => {
   });
 
   it('produces output the gate accepts', () => {
-    assert.doesNotThrow(() => assertNoPII(hashEmail('a@b.com'), 'test'));
+    assert.doesNotThrow(() => assertNoPII(hashEmail('alice@example.com'), 'test'));
   });
 
   it('is salted, so it is not a lookup table of every npm address', () => {

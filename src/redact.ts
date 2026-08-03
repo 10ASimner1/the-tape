@@ -9,7 +9,7 @@
  * This is byte-level over every string in the document rather than a list of known
  * fields, because npm puts addresses in at least seven places — `maintainers[].email`,
  * `versions[x]._npmUser.email`, `time.unpublished.maintainers[].email`, `bugs.email`,
- * `author` and `contributors[]` as free text ("Name <a@b.com>"), and README bodies —
+ * `author` and `contributors[]` as free text ("Name <alice@example.com>"), and README bodies —
  * and that list was still incomplete the last three times it was written.
  */
 

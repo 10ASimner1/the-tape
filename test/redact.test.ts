@@ -82,7 +82,7 @@ describe('redactEmailsDeep', () => {
   });
 
   it('leaves non-string values alone', () => {
-    const doc = { n: 42, b: true, nul: null, arr: [1, 'a@b.com', { deep: 'c@d.com' }] };
+    const doc = { n: 42, b: true, nul: null, arr: [1, 'alice@example.com', { deep: 'bob@example.org' }] };
     const out = redactEmailsDeep(doc, () => 'X') as typeof doc;
     assert.equal(out.n, 42);
     assert.equal(out.b, true);

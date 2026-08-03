@@ -7,6 +7,7 @@ import { argv, env, exit } from 'node:process';
 
 import * as cursorMod from './cursor.ts';
 import { headSeq } from './feed.ts';
+import { Healthcheck } from './healthcheck.ts';
 import { log, writeStepSummary } from './log.ts';
 import { record } from './run.ts';
 import { FsStore } from './store.fs.ts';
@@ -138,10 +139,20 @@ async function main(): Promise<void> {
       return;
     case 'record': {
       const maxFetch = flag('max-fetch');
-      const summary = await record({
-        store,
-        ...(maxFetch !== undefined ? { maxFetch: Number(maxFetch) } : {}),
-      });
+      const health = new Healthcheck(env['TAPE_HEALTHCHECK_URL']);
+      await health.start();
+
+      let summary;
+      try {
+        summary = await record({
+          store,
+          ...(maxFetch !== undefined ? { maxFetch: Number(maxFetch) } : {}),
+        });
+      } catch (err) {
+        await health.fail();
+        throw err;
+      }
+      await health.success();
       await writeStepSummary([
         `### tape: seq ${summary.sinceSeq}..${summary.lastSeq}`,
         '',
