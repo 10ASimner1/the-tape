@@ -9,10 +9,13 @@ import * as cursorMod from './cursor.ts';
 import { headSeq } from './feed.ts';
 import { Healthcheck } from './healthcheck.ts';
 import { log, writeStepSummary } from './log.ts';
+import { build } from './index/build.ts';
+import { collect, render } from './index/digest.ts';
+import { syncOsv } from './osv.ts';
 import { record } from './run.ts';
 import { FsStore } from './store.fs.ts';
 import { inspectS3Env, S3Store } from './store.s3.ts';
-import { keys, type Store } from './store.ts';
+import { keys, runIdFrom, type Store } from './store.ts';
 
 /** MEASURED: ~103,000 seq per 24h. Deliberately rounded UP — over-reaching
  *  backwards only re-observes packages (duplicates, which are free), while
@@ -125,6 +128,44 @@ async function storeCheck(store: Store): Promise<void> {
   log.info('store check passed');
 }
 
+/**
+ * Mirrors the OSV delta, rebuilds the index from raw, and writes the day's digest.
+ *
+ * Runs nightly and entirely out of band: it never touches the recorder's path, so
+ * a failure here delays the digest and costs nothing on the tape.
+ */
+async function buildIndex(store: Store): Promise<void> {
+  const now = new Date();
+  const runId = runIdFrom(now);
+
+  // OSV lives here rather than in the hourly recorder deliberately. The recorder
+  // is the thing that must never break, and a second network dependency buys ~12
+  // hours of latency on a signal that already lags three.
+  const cursor = await cursorMod.read(store);
+  if (cursor !== null) {
+    const osv = await syncOsv(store, cursor.osvWatermark, now, runId);
+    if (osv.watermark !== cursor.osvWatermark && osv.watermark !== null) {
+      await cursorMod.write(store, cursorMod.withOsvWatermark(cursor, osv.watermark));
+    }
+  }
+
+  const dbPath = flag('db') ?? '.tape-index.sqlite';
+  const stats = await build(store, dbPath);
+
+  // Yesterday by default: today is still accumulating.
+  const date = flag('date') ?? new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
+  const { DatabaseSync } = await import('node:sqlite');
+  const db = new DatabaseSync(dbPath);
+  const digest = render(collect(db, date));
+  db.close();
+
+  const { mkdir, writeFile } = await import('node:fs/promises');
+  await mkdir('digests', { recursive: true });
+  await writeFile(`digests/${date}.md`, digest.markdown, 'utf8');
+  await writeFile(`digests/${date}.json`, digest.json, 'utf8');
+  log.info('digest written', { date, events: stats.events, packages: stats.packages });
+}
+
 async function recoverCursor(store: Store): Promise<void> {
   const recovered = await cursorMod.recoverFromArchive(store);
   if (recovered === null) throw new Error('no feed objects in the archive to recover from');
@@ -172,6 +213,9 @@ async function main(): Promise<void> {
     case 'store-check':
       await storeCheck(store);
       return;
+    case 'index':
+      await buildIndex(store);
+      return;
     case 'record': {
       const maxFetch = flag('max-fetch');
       const health = new Healthcheck(env['TAPE_HEALTHCHECK_URL']);
@@ -206,7 +250,7 @@ async function main(): Promise<void> {
       return;
     }
     default:
-      throw new Error(`unknown mode "${mode}". Use: bootstrap | record | store-check | recover-cursor`);
+      throw new Error(`unknown mode "${mode}". Use: bootstrap | record | index | store-check | recover-cursor`);
   }
 }
 

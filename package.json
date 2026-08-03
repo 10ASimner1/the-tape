@@ -14,7 +14,8 @@
     "bootstrap": "node --env-file-if-exists=.env.local src/main.ts bootstrap",
     "record": "node --env-file-if-exists=.env.local src/main.ts record",
     "recover-cursor": "node --env-file-if-exists=.env.local src/main.ts recover-cursor",
-    "store-check": "node --env-file-if-exists=.env.local src/main.ts store-check"
+    "store-check": "node --env-file-if-exists=.env.local src/main.ts store-check",
+    "index": "node --env-file-if-exists=.env.local src/main.ts index"
   },
   "//": "dependencies is intentionally empty. This is a supply-chain-security project; the recorder runs on Node built-ins alone, so there is no lockfile attack surface to be the story about.",
   "dependencies": {},

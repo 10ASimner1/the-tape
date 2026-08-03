@@ -6,8 +6,10 @@ into an append-only archive.
 Unpublished packages vanish from every public record. Every day not recorded is lost
 forever. This keeps the tape rolling.
 
-**Status: M2.** The recorder runs on GitHub Actions every 15 minutes, writing to an
-S3-compatible bucket. Next is the nightly index, the OSV join and the daily digest.
+**Status: M3.** The recorder runs on GitHub Actions every 15 minutes, writing to an
+S3-compatible bucket. A nightly job rebuilds a SQLite index from the raw archive,
+joins OSV advisories, scores typosquats and publishes a
+[daily digest](digests/) — the graveyard is the headline.
 
 npm explicitly permits this. Its [crawler policy](https://docs.npmjs.com/policies/crawlers/)
 states that a full metadata copy via CouchDB replication *"is acceptable within our
@@ -194,6 +196,8 @@ rather than an emergency. Until then, watch the bucket.
 | `src/feed.ts` | The changes feed, and `FeedReceipt`. |
 | `src/cursor.ts` | The entire durable mutable state. |
 | `src/observation.ts` | The archive's unit of record. |
+| `src/index/derive.ts` | Observations → events. Every rule the recorder deliberately does *not* apply at write time. |
+| `src/index/digest.ts` | The daily digest, including the graveyard. Gated on every write. |
 | `src/config.ts` | Every tunable, with the measurement behind it. |
 | `docs/assumptions.md` | What was verified against the live APIs, and when. |
 
@@ -204,10 +208,10 @@ see [test/fixtures/README.md](test/fixtures/README.md).
 
 ## Roadmap
 
-M2 is the hourly GitHub Actions workflow and an S3-compatible store (hand-rolled
-SigV4, still zero dependencies). M3 is the nightly index, OSV join and daily digest.
-M4 is seven unbroken days plus two drills: a `SIGKILL` mid-run proving convergence
-with duplicates and no loss, and a full index rebuild from raw alone.
+M4 is acceptance: seven unbroken days, plus two drills — a `SIGKILL` mid-run
+proving convergence with duplicates and no loss, and a full index rebuild from raw
+alone. Before that, the durability debt: a second independent copy of the archive,
+hash-chained manifests committed to git, and a self-imposed spend cap.
 
 Extensions are add-only and none of them touches the recorder loop. When in doubt
 between a feature and tape integrity, the tape wins.

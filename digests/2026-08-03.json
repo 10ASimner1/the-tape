@@ -1,0 +1,316 @@
+{
+  "date": "2026-08-03",
+  "generatedAt": "2026-08-03T10:41:19.465Z",
+  "totals": {
+    "packagesObserved": 5186,
+    "publishes": 1196,
+    "newPackages": 88,
+    "packageUnpublishes": 1,
+    "versionUnpublishes": 81,
+    "maintainerChanges": 1,
+    "revGaps": 291,
+    "gone": 0
+  },
+  "graveyard": [
+    {
+      "name": "pkg-stage-acari-buzzy-goldy-yelms",
+      "diedAt": "2026-08-03T01:04:41.000Z",
+      "ageAtDeathDays": 0,
+      "versionsLost": 1,
+      "maintainers": [],
+      "unpublishedBy": null
+    }
+  ],
+  "resurfaced": [],
+  "versionYanks": [
+    {
+      "name": "@innohub/react-utils",
+      "versions": [
+        "2.5.50"
+      ],
+      "count": 1,
+      "oldest": "2026-07-18T19:42:43.000Z"
+    },
+    {
+      "name": "etcd3-mock",
+      "versions": [
+        "0.0.2"
+      ],
+      "count": 1,
+      "oldest": "2026-08-03T09:22:24.000Z"
+    },
+    {
+      "name": "@mptw/skylens-ui",
+      "versions": [
+        "1.15.1"
+      ],
+      "count": 1,
+      "oldest": "2026-08-03T09:24:32.000Z"
+    },
+    {
+      "name": "@l2h/agent-telemetry",
+      "versions": [
+        "0.0.1",
+        "0.0.3"
+      ],
+      "count": 2,
+      "oldest": "2026-08-03T09:12:50.000Z"
+    },
+    {
+      "name": "@krx3d/tizentube2",
+      "versions": [
+        "1.15.110",
+        "1.15.120",
+        "1.15.130",
+        "1.15.140"
+      ],
+      "count": 4,
+      "oldest": "2026-08-03T08:31:09.000Z"
+    },
+    {
+      "name": "@atlassian-test-prod/synth-check",
+      "versions": [
+        "1.0.111249",
+        "1.0.111251",
+        "1.0.111253",
+        "1.0.111255",
+        "1.0.111257"
+      ],
+      "count": 36,
+      "oldest": "2026-08-03T01:22:46.000Z"
+    },
+    {
+      "name": "@atlassian-test-staging/synth-check",
+      "versions": [
+        "1.0.111246",
+        "1.0.111248",
+        "1.0.111250",
+        "1.0.111252",
+        "1.0.111254"
+      ],
+      "count": 37,
+      "oldest": "2026-08-03T01:03:15.000Z"
+    }
+  ],
+  "typosquats": [
+    {
+      "name": "pushq",
+      "score": 0.233,
+      "nearest": "pusher",
+      "distance": 2
+    }
+  ],
+  "malicious": [
+    {
+      "osvId": "MAL-2026-11500",
+      "name": "tailwind-anim",
+      "summary": "Malicious code in tailwind-anim (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11212",
+      "name": "@goodjavascript/dotenv",
+      "summary": "Malicious code in @goodjavascript/dotenv (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11499",
+      "name": "@types-beta/sdk",
+      "summary": "Malicious code in @types-beta/sdk (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11484",
+      "name": "simple-date-formatter-util-1",
+      "summary": "Malicious code in simple-date-formatter-util-1 (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11498",
+      "name": "@custombots/custombot",
+      "summary": "Malicious code in @custombots/custombot (npm)"
+    }
+  ],
+  "installScripts": [
+    {
+      "name": "agentiqa",
+      "version": "1.1.51",
+      "scripts": [
+        "preinstall"
+      ]
+    },
+    {
+      "name": "@bivy/bivy",
+      "version": "0.5.1-staging.68",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "patchwork-os",
+      "version": "1.1.0-beta.4.canary.473",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@bike4mind/cli",
+      "version": "0.0.0-feat-1178-capability-injection-20260803100521",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "opencode-ai",
+      "version": "0.0.0-beta-202608030932",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "opencode-ai",
+      "version": "0.0.0-dev-202608030936",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "patchwork-os",
+      "version": "1.1.0-beta.4.canary.472",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@lightdash/cli",
+      "version": "1.62.0",
+      "scripts": [
+        "preinstall",
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@bike4mind/cli",
+      "version": "0.0.0-fix-memento-optout-agent-executor-1337-20260803095348",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "daedalus-cli",
+      "version": "3.8.0",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@dptech-corp/bohr-cli",
+      "version": "2.5.15",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "tapflow",
+      "version": "0.18.0",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "patchwork-os",
+      "version": "1.1.0-beta.4.canary.471",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@vishwa-ko-9/vi-torrent",
+      "version": "0.4.3",
+      "scripts": [
+        "preinstall"
+      ]
+    },
+    {
+      "name": "@bike4mind/cli",
+      "version": "0.0.0-changeset-release-main-20260803094422",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "opencode-ai",
+      "version": "0.0.0-dev-202608030850",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@threadbase-sh/streamer",
+      "version": "1.44.2",
+      "scripts": [
+        "preinstall",
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@triroop/engineering-system",
+      "version": "0.2.0",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "yaver-cli",
+      "version": "1.99.403",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@bivy/bivy",
+      "version": "0.5.1-staging.67",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "sealclaw",
+      "version": "2026.7.28-beta.20",
+      "scripts": [
+        "preinstall",
+        "postinstall"
+      ]
+    },
+    {
+      "name": "patchwork-os",
+      "version": "1.1.0-beta.4.canary.470",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "agentiqa",
+      "version": "1.1.50-staging.590681",
+      "scripts": [
+        "preinstall"
+      ]
+    },
+    {
+      "name": "@bike4mind/cli",
+      "version": "0.0.0-feat-prompt-details-response-20260803092634",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@bike4mind/cli",
+      "version": "0.0.0-feat-prompt-mode-api-20260803092609",
+      "scripts": [
+        "postinstall"
+      ]
+    }
+  ],
+  "ops": {
+    "observations": 5885,
+    "gaps": 34,
+    "piiRefused": 0,
+    "securityHolders": 0
+  }
+}

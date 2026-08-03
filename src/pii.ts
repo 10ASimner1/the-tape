@@ -90,7 +90,14 @@ export const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
  * is a conjunction that matches it exactly.
  */
 const VCS_LOCAL_PART = /^(?:git|hg|svn)@/i;
-const ROLE_ADDRESSES = new Set(['npm@npmjs.com']);
+const ROLE_ADDRESSES = new Set([
+  'npm@npmjs.com',
+  // GitHub's own Actions bot, needed as a git commit identity in the publish
+  // workflow. Deliberately this exact address rather than the whole noreply
+  // domain: a per-user noreply address embeds the username and so does identify
+  // a person.
+  '41898282+github-actions[bot]@users.noreply.github.com',
+]);
 
 export function isNonPersonalAddress(address: string): boolean {
   return VCS_LOCAL_PART.test(address) || ROLE_ADDRESSES.has(address.toLowerCase());
