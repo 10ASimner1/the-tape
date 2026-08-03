@@ -8,7 +8,8 @@ node_modules/
 .tape-store/
 *.local.json
 
-# The PII salt. If this leaks, every maintainer hash in the archive becomes a
-# reversible email address. It lives in an Actions secret in CI and nowhere else.
-.tape-salt.local
+# Secrets live in .env.local (covered by .env.* above) and in GitHub Actions
+# secrets. Nowhere else — not in code, not in config, not in a commit message.
+# If the PII salt leaks, every maintainer hash in the archive becomes a
+# reversible email address.
 
