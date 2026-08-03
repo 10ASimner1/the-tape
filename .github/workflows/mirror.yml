@@ -5,15 +5,25 @@ name: mirror
 # billing failure domain — the threat is not a subtle attacker, it is a closed or
 # compromised account taking the whole moat with it.
 #
-# DAILY, not monthly. Monthly leaves roughly a gigabyte and 78,000 objects
-# unmirrored if the primary account dies the day before a sync; daily leaves ~36
-# MB. Listing is free on B2 (Class B/C transactions), Actions is free on public
-# repos, and the copy is a diff — so the extra cadence costs nothing.
+# MANUAL ONLY, for now, and the reason is a correction worth recording.
 #
-# Scheduled well away from the recorder (:07,:22,:37,:52) and the index (03:23).
+# This was scheduled daily on the basis that "B2's Class A/B/C transactions are
+# free" — a claim taken from docs/assumptions.md §5, which was WRONG. Only Class
+# A (uploads) is free and unlimited. Class B (downloads, and every HEAD) has a
+# 2,500/day free allowance, and a B2 account capped at $0 spend HARD-STOPS on it:
+# reads start returning 403 and the recorder cannot even read its own cursor.
+#
+# MEASURED on the live bucket, 2026-08-03: 1,652 of 1,726 objects are retained
+# packuments. The mirror must GET each object exactly once, ever, so mirroring
+# costs one Class B per object no matter how it is scheduled — and the recorder
+# already spends one HEAD per retained packument writing them. Together that is
+# ~3,300/day against a 2,500 allowance, which is why the first seed took the
+# whole account down.
+#
+# Rescheduling cannot fix this; only reducing the OBJECT COUNT can. Re-enable the
+# cron once retained packuments are batched into shards the way raw/obs/ already
+# is. See docs/HANDOFF.md.
 on:
-  schedule:
-    - cron: "41 5 * * *"
   workflow_dispatch:
     inputs:
       verify:

@@ -16,7 +16,7 @@ index from that archive and publishes a digest whose headline is the graveyard.
 | Code | `github.com/10ASimner1/the-tape` (public, `main`, force-push blocked) |
 | Working copy | `D:\VendCheck` — the folder name is historical and means nothing |
 | Archive | Backblaze B2, bucket `tape-npm-archive`, region `eu-central-003`, **private** |
-| Second copy | Any S3-compatible store under `TAPE_MIRROR_S3_*`, or local disk via `--mirror-local`. Copied daily. **Must not be the same bucket.** |
+| Second copy | Any S3-compatible store under `TAPE_MIRROR_S3_*`, or local disk via `--mirror-local`. **Manual only** until object count comes down — see §6. **Must not be the same bucket.** |
 | Hash ledger | `ledger/YYYY-MM-DD.jsonl` in this repo — the public witness to the private archive |
 | Domain | `unpublished.dev` (Porkbun), forwarding `tape@` to a personal inbox |
 | Liveness | healthchecks.io — pings on start/success/fail |
@@ -95,7 +95,7 @@ npm run pii-audit         # refuses any personal address in the tree
 | `npm run index` | OSV sync, index rebuild, digest render. |
 | `npm run bootstrap -- --hours 1` | First-run cursor. Refuses to clobber an existing one. |
 | `npm run recover-cursor` | Re-derives the cursor position from the archive. |
-| `npm run mirror` | Copies whatever the second store is missing. Daily in CI. |
+| `npm run mirror` | Copies whatever the second store is missing. **Manual only** — one Class B per object, see §6. |
 | `npm run mirror -- --verify all` | Deep-verifies every object by hash, not just by size. |
 | `npm run mirror -- --mirror-local D:/tape-mirror` | Mirror to disk. No second account needed. |
 | `npm run restore-drill` | **The acceptance test.** Rebuilds the index from the mirror alone. Refuses to run if the primary is configured. |
@@ -125,6 +125,7 @@ package and the rule.
 | `recovering an unfinished run from its feed blob` | Normal. A previous run died mid-fetch and this one is picking up its work. |
 | `TRIAGE: queue too deep` | >50,000 packages queued. The run captures the feed only and skips fetching. Self-correcting. |
 | `object store is failing more requests than usual` | B2 degradation. A ~0.3% retry rate is normal and logged at info. |
+| **`S3 GET failed: HTTP 403 AccessDenied`, but `put ok`** | **The B2 daily Class B cap is spent.** Reads 403, writes still work, so the recorder cannot read its own cursor and every run fails. It resets daily and recovers on its own — the cursor never moved, so this is delay, not loss. If it recurs, the object count is too high: see §6. |
 | healthchecks.io alert, no failed run | The workflow did not fire at all. See §6. |
 | `storage budget: running degraded` `tier=soft` | The archive is past 75% of the ceiling. Observations still land; only the re-fetchable packuments are skipped. Decide: upgrade the plan (`TAPE_STORAGE_CEILING_BYTES`) or stand up more space. Not urgent, but it is the warning shot. |
 | `TRIAGE: storage budget exhausted` | Past 92%. **The feed is still being captured** — that never stops — but nothing is being enriched. Act now. |
@@ -165,6 +166,19 @@ archive is not.
 - **Backblaze returns a transient 500 on ~0.3% of writes.** Retries absorb it. Only an unusual *rate* is logged as a warning.
 - **Scheduled workflows are disabled after 60 days of repo inactivity, silently.** The healthcheck is the only detector.
 - **Actions minutes are free on public repos** — with standard runners only. Never a larger runner label.
+
+### The limit that actually binds is requests, not bytes
+
+**On 2026-08-03 the tape stopped at 44 MB of storage** — 0.4% of the free tier —
+because Backblaze's free **Class B** allowance (2,500/day, and a `HEAD` counts) was
+spent. A $0-capped account hard-stops: `GET` returns 403, `PUT` keeps working, and
+the recorder cannot read its own cursor.
+
+96% of objects are retained packuments, and each costs two Class B: a `HEAD` when
+`putIfAbsent` writes it, and a `GET` when the mirror copies it. `docs/assumptions.md`
+§5 has the measurements and why only cutting object count fixes it. **`mirror.yml`
+is manual-only until then** — rescheduling cannot help, because the mirror must
+`GET` each object exactly once regardless of when.
 
 ### Costs
 
@@ -230,6 +244,11 @@ in git, and a graded spend cap. 144 tests. Zero runtime dependencies.
 `7,22,37,52`. And the `storage` row in each run's step summary — it is printed on
 every run, not only degraded ones, precisely so the number is watchable before it
 becomes a problem.
+
+**Watch harder:** the B2 **Class B transaction** count, which is the binding
+constraint and is not the one anything in this repo measures. See §6 — the spend
+cap in `src/budget.ts` guards stored BYTES, and bytes turned out not to be what
+runs out first.
 
 **On reviews:** M3 shipped, then an adversarial review found nine real defects in
 it — including two that made the public digest quietly wrong. `backfill` is

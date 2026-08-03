@@ -141,9 +141,40 @@ Also: **~11% of recent MAL packages already 404** at the registry. The takedown 
 - Scheduled runs are documented as **delayed or dropped**, worst at the top of the hour. Nothing may be named or keyed by wall-clock hour.
 - **`concurrency: cancel-in-progress: false` cancels the pending run** — it does not queue it.
 - Scheduled workflows are disabled after 60 days of "repository activity", which GitHub never defines. Disabling is **silent**. External liveness monitoring is the only reliable detector.
-- **Cloudflare R2 requires a payment method** and **bills overage rather than hard-stopping** (unlike D1/KV). Backblaze B2 gives 10 GB free with **free** Class A/B/C transactions.
+- **Cloudflare R2 requires a payment method** and **bills overage rather than hard-stopping** (unlike D1/KV).
 - **The 10 GB is CUMULATIVE STORAGE, not a monthly write allowance,** and it is quoted in **decimal** GB. Both matter to `src/budget.ts`. The archive is append-only, so every byte ever written is still being billed for — a monthly write counter reads near-zero on the very day the tier is exhausted. And reading a decimal tier as binary would overstate the headroom by 7.4%.
-- **Free Class B/C transactions are what make the mirror's design possible.** Listing a year-end archive is ~950 pages per side and costs nothing, so the mirror recomputes a full diff every run rather than keeping a watermark. That matters beyond cost: `private/pkg/<name>/<rev>` keys carry no date component, so a new key can appear anywhere in the keyspace at any time and a lexical high-water mark there would skip writes silently.
+
+### Backblaze B2's free tier is a REQUEST limit long before it is a byte limit
+
+This section previously said B2 gives *"10 GB free with free Class A/B/C transactions."* **That was wrong, it was load-bearing, and it took the tape down on 2026-08-03.** Corrected against the live account:
+
+| | free allowance | what counts |
+|---|---|---|
+| Storage | 10 GB | — |
+| Download bandwidth | 1 GB/day | — |
+| **Class A** | **unlimited, free** | uploads (`PUT`) |
+| **Class B** | **2,500/day** | downloads (`GET`) **and every `HEAD`** |
+| **Class C** | **2,500/day** | listings |
+
+**An account capped at $0 spend HARD-STOPS**, it does not warn: `GET` starts returning **HTTP 403 AccessDenied** while `PUT` keeps working. The recorder reads its cursor at the start of every run, so it stops completely — and it stops *before* `COMMIT A`, so this is delay rather than loss, but the tape is down until the daily reset.
+
+MEASURED on the live bucket the day it happened, at 44.5 MB total:
+
+| prefix | objects | bytes |
+|---|---|---|
+| `private/` (retained packuments) | **1,652** | 20.5 MB |
+| everything else | 74 | 24 MB |
+
+**96% of objects are retained packuments, and each one costs two Class B transactions**: one `HEAD` when `putIfAbsent` writes it, and one `GET` when the mirror copies it. That is ~3,300/day against a 2,500 allowance, on an archive holding 44 MB — 0.4% of the storage tier.
+
+Two consequences for the design:
+
+1. **The mirror must `GET` every object exactly once, ever, so its cost is set by object COUNT and cannot be rescheduled away.** Deferring `private/` to a weekly sweep does not reduce the total; it concentrates it into one much worse day.
+2. **Only reducing object count fixes this.** `raw/obs/` holds 19 MB in 52 objects; `private/` holds 20 MB in 1,652. Same bytes, ~30x the request cost, purely from layout. Batching retained packuments into shards is therefore not an optimisation — it is what makes a second copy affordable at all.
+
+Note the bucket lifecycle is **keep all versions**, which is right for an append-only archive but means an unconditional overwrite is not free: it creates a second retained version. So the `HEAD` cannot simply be dropped.
+
+- Listing is Class C and the mirror's full diff is cheap in that class (~950 pages/side at year-end, well inside 2,500/day), which is why it keeps no watermark. That part of the design survives: `private/pkg/<name>/<rev>` keys carry no date component, so a new key can appear anywhere in the keyspace and a lexical high-water mark would skip writes silently.
 - **npm explicitly permits this.** Its crawler policy: full metadata via CouchDB replication *"is acceptable within our terms of use"*.
 
 ---
