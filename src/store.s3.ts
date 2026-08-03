@@ -55,6 +55,16 @@ function unescapeXml(s: string): string {
     .replace(/&amp;/g, '&');
 }
 
+/** Guards against a falsy key silently addressing the bucket itself. */
+function assertObjectKey(key: string, op: string): void {
+  if (typeof key !== 'string' || key.length === 0) {
+    throw new Error(
+      `S3 ${op} called with an empty key. An empty key addresses the bucket, not an ` +
+        `object, so this would have returned a listing instead of failing.`,
+    );
+  }
+}
+
 export class S3Store implements Store {
   readonly #cfg: S3Config;
 
@@ -131,11 +141,17 @@ export class S3Store implements Store {
   }
 
   async get(key: string): Promise<Uint8Array | null> {
+    // An empty key addresses the BUCKET, not an object, and S3 answers that with
+    // an XML listing rather than an error. A caller passing a missing key would
+    // then get a plausible-looking body instead of null — which is precisely how
+    // an undefined cursor field turned into an unexplained gunzip failure.
+    assertObjectKey(key, 'get');
     const res = await this.#send('GET', key, { accept: [404] });
     return res.status === 404 ? null : res.body;
   }
 
   async put(key: string, body: Uint8Array): Promise<void> {
+    assertObjectKey(key, 'put');
     await this.#send('PUT', key, { body });
   }
 
@@ -148,6 +164,7 @@ export class S3Store implements Store {
    * recorder's actual concurrency control is the cursor commit, not the blob write.
    */
   async putIfAbsent(key: string, body: Uint8Array): Promise<{ written: boolean }> {
+    assertObjectKey(key, 'putIfAbsent');
     const head = await this.#send('HEAD', key, { accept: [404] });
     if (head.status !== 404) return { written: false };
     await this.put(key, body);
@@ -185,6 +202,7 @@ export class S3Store implements Store {
   }
 
   async delete(key: string): Promise<void> {
+    assertObjectKey(key, 'delete');
     await this.#send('DELETE', key, { accept: [404] });
   }
 }

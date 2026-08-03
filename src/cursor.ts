@@ -113,10 +113,37 @@ export function withOsvWatermark(cursor: Cursor, watermark: string): Cursor {
 // where a non-fast-forward push rejection becomes the compare-and-swap between
 // overlapping runs — a primitive B2's S3 layer does not offer.
 
-export async function read(store: Store): Promise<Cursor | null> {
+/**
+ * Fills in fields added since the stored cursor was written.
+ *
+ * An archive that runs for years will read cursors written by older code, and a
+ * missing field arrives as `undefined` rather than the `null` the type promises.
+ * That exact gap took the recorder down: a new `pendingFeedKey` field read back
+ * as `undefined`, passed a `!== null` check, and the resulting `get(undefined)`
+ * fetched a bucket listing that then failed to gunzip. Normalising on read makes
+ * the type honest instead of relying on every call site guessing correctly.
+ */
+function normalize(raw: Partial<Cursor>, now: Date): Cursor {
+  return {
+    schema: 1,
+    lastSeq: raw.lastSeq ?? 0,
+    lastRunId: raw.lastRunId ?? null,
+    lastRunCompletedAt: raw.lastRunCompletedAt ?? null,
+    osvWatermark: raw.osvWatermark ?? null,
+    bytesWrittenMonth: raw.bytesWrittenMonth ?? 0,
+    monthKey: raw.monthKey ?? monthKeyOf(now),
+    pendingFeedKey: raw.pendingFeedKey ?? null,
+  };
+}
+
+export async function read(store: Store, now = new Date()): Promise<Cursor | null> {
   const bytes = await store.get(keys.cursor());
   if (bytes === null) return null;
-  return JSON.parse(Buffer.from(bytes).toString('utf8')) as Cursor;
+  const raw = JSON.parse(Buffer.from(bytes).toString('utf8')) as Partial<Cursor>;
+  if (typeof raw.lastSeq !== 'number' || !Number.isFinite(raw.lastSeq)) {
+    throw new Error('stored cursor has no usable lastSeq; run recover-cursor');
+  }
+  return normalize(raw, now);
 }
 
 export async function write(store: Store, cursor: Cursor): Promise<void> {
