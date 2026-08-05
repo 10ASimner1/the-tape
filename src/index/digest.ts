@@ -119,15 +119,31 @@ export function collect(db: DatabaseSync, date: string): DigestData {
         .get(kind, from, to) as { n: number }
     ).n;
 
-  /** Yanks are counted by when we SAW them, because a yank's `at` is the version's
-   *  original publish time — often years earlier. Counting on `at` made the headline
-   *  say "0 versions yanked" directly above a table listing them. */
-  const countObserved = (kind: string): number =>
+  /**
+   * Yanks are counted by when we SAW them, AND excluding first sightings.
+   *
+   * Both halves are needed, and shipping only the first published a figure that
+   * was wrong by 43x. A yank's `at` is the version's ORIGINAL publish time, often
+   * years earlier, so counting on `at` made the headline say "0 versions yanked"
+   * directly above a table listing them — hence `observed_at`. But `observed_at`
+   * alone counts a package's ENTIRE yank history the first time we see it: of the
+   * 3,425 reported for 2026-08-03, 3,345 were first sightings, 35 of them dating
+   * to 2014. The honest same-day figure was 80.
+   *
+   * Note this is the exact opposite of the rule for `count()` above, which
+   * deliberately does NOT filter on backfill — and the reasoning does not
+   * transfer between them. There, `at` is a real publish timestamp doing the
+   * recency work, and excluding backfill would delete every typosquat (published
+   * once, observed once, so permanently backfilled). Here `at` cannot do that
+   * work, so backfill is the only recency signal left. Each decision was sound;
+   * what was missing was checking them against each other.
+   */
+  const countObservedFresh = (kind: string): number =>
     (
       db
         .prepare(
           `SELECT COUNT(*) AS n FROM events
-            WHERE kind = ? AND observed_at >= ? AND observed_at <= ?`,
+            WHERE kind = ? AND observed_at >= ? AND observed_at <= ? AND backfill = 0`,
         )
         .get(kind, observedToday, observedTomorrow) as { n: number }
     ).n;
@@ -159,6 +175,11 @@ export function collect(db: DatabaseSync, date: string): DigestData {
   // Grouped, and ordered by fewest-first. A package yanking three versions is a
   // story; a release bot yanking four hundred is a fact about the bot, and on the
   // first real run two Atlassian test packages produced 46 of the top 50 rows.
+  //
+  // The backfill filter below fixes a different half of that same problem: those
+  // 46 rows were a first sighting reporting years of history at once. Ordering
+  // handles noisy bots, the filter handles history — they are not substitutes,
+  // and the ordering rationale above still holds with the filter in place.
   const versionYanks = (
     db
       .prepare(
@@ -167,6 +188,10 @@ export function collect(db: DatabaseSync, date: string): DigestData {
            FROM events
           WHERE kind = 'version_unpublish'
             AND observed_at >= ? AND observed_at <= ?
+            -- Same rule as the headline count, for the same reason: without it
+            -- this table is a sample of packages' whole yank histories rather
+            -- than of today's, and the two disagreeing is worse than either.
+            AND backfill = 0
           GROUP BY name
           ORDER BY count ASC, oldest ASC
           LIMIT 25`,
@@ -244,7 +269,7 @@ export function collect(db: DatabaseSync, date: string): DigestData {
         from, to,
       ),
       packageUnpublishes: graveyard.length,
-      versionUnpublishes: countObserved('version_unpublish'),
+      versionUnpublishes: countObservedFresh('version_unpublish'),
       maintainerChanges: count('maintainer_change'),
       revGaps: count('rev_gap'),
       gone: count('gone'),

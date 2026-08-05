@@ -87,6 +87,40 @@ describe('the headline agrees with the table beneath it', () => {
     assert.match(markdown, /1 version yanked/);
     assert.match(markdown, /`evil`/);
   });
+
+  it('does NOT count a first sighting reporting years of yank history as today', () => {
+    // The published 2026-08-03 digest said "3425 versions yanked". 3,345 of those
+    // were a package's entire history converted to events stamped today on first
+    // contact — 35 of them from 2014. The honest same-day figure was 80, so the
+    // public record overstated by 43x, in a sentence whose every other clause
+    // means "today".
+    //
+    // The two rules in collect() are deliberate opposites and neither transfers:
+    // publishes filter on `at` and must NOT exclude backfill (that deleted every
+    // typosquat); yanks cannot filter on `at` and so have nothing but backfill to
+    // separate history from news. Each was right on its own; the pair was never
+    // checked against the other.
+    const d = db();
+    insert(d, {
+      id: 'vunpub|ancient|0.0.1', kind: 'version_unpublish', name: 'ancient',
+      version: '0.0.1', at: at('2014-05-05T00:00:00Z'),
+      observedAt: `${DAY}T09:00:00.000Z`, backfill: true,
+    });
+    insert(d, {
+      id: 'vunpub|today|9.9.9', kind: 'version_unpublish', name: 'today',
+      version: '9.9.9', at: at('2025-01-01T00:00:00Z'),
+      observedAt: `${DAY}T09:00:00.000Z`, backfill: false,
+    });
+
+    const digest = collect(d, DAY);
+    assert.equal(digest.totals.versionUnpublishes, 1, 'only the non-backfilled one');
+    assert.deepEqual(digest.versionYanks.map((y) => y.name), ['today'],
+      'and the table agrees with the headline');
+
+    const { markdown } = render(digest);
+    assert.match(markdown, /1 version yanked/);
+    assert.doesNotMatch(markdown, /ancient/);
+  });
 });
 
 describe('the graveyard', () => {
