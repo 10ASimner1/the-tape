@@ -18,6 +18,8 @@ import { OSV_MODIFIED_CSV, OSV_RECORD_URL } from './config.ts';
 import { request, requestJson } from './http.ts';
 import { putJsonl } from './jsonl.ts';
 import { log } from './log.ts';
+import { assertNoPersonalAddresses, hashEmail } from './pii.ts';
+import { redactEmailsDeep } from './redact.ts';
 import { keys, type Store } from './store.ts';
 
 /** Escalating windows. Most runs are satisfied by the first. */
@@ -138,7 +140,26 @@ export async function syncOsv(
   if (records.length === 0) return { fetched: 0, watermark, key: null, complete: false };
 
   const key = keys.osv(now, runId);
-  await putJsonl(store, key, records);
+
+  // OSV records carry personal addresses, and this path did not redact them.
+  //
+  // MEASURED on the archive 2026-08-05: 1,022 raw addresses across 848 of 2,786
+  // stored records, with ZERO salted hashes — while raw/obs, raw/feed and
+  // private/pkg held 0 addresses and 266,000+ hashes between them. This was the
+  // only putJsonl caller that passed no guard, and it is the reason that
+  // parameter is now required rather than optional.
+  //
+  // The addresses live in `credits[].contact[]` (which pii.ts's own header names
+  // as the field a careful enumeration missed), in `details` free text, and in
+  // `database_specific` URLs — so this redacts byte-level over every string
+  // rather than naming fields, exactly as packuments do.
+  //
+  // The gate is the address rule rather than the strict one, for the same reason
+  // retained packuments use it: these are third-party documents archived close to
+  // verbatim, and reshaping them to satisfy a key-NAME rule would cost fidelity
+  // and protect nobody. The address rule still applies in full.
+  const redacted = records.map((r) => redactEmailsDeep(r, hashEmail));
+  await putJsonl(store, key, redacted, assertNoPersonalAddresses);
   log.info('osv delta stored', {
     key, records: records.length, mal: records.filter((r) => r.id.startsWith('MAL-')).length,
   });

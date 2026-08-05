@@ -114,7 +114,19 @@ export async function readManifests(store: Store, day: Date): Promise<StoredMani
       key,
       manifest,
       sha256: manifestSha256(bytes),
-      objects: 1 + manifest.obsShards.length + manifest.retained.length,
+      // Defaulted, because there is a THIRD era this arithmetic has to survive.
+      //
+      // Manifests written before f59ae1d have no `retained` at all, and ones
+      // before f88a5df have no chain fields either. Reading `.length` off the
+      // missing field threw a TypeError inside readManifests — which took down
+      // the whole nightly `build` job on 2026-08-04, and with it the digest and
+      // the ledger upload, for a day whose data was otherwise perfect. `ledger`
+      // mode promises to always exit zero over a broken chain; it kept that
+      // promise in transcribe() and broke it one function earlier.
+      //
+      // A manifest is a permanent record in an append-only archive, so every
+      // shape ever written stays readable forever. Default, never assume.
+      objects: 1 + (manifest.obsShards?.length ?? 0) + (manifest.retained?.length ?? 0),
       bytes: manifest.bytesWritten,
     });
   }

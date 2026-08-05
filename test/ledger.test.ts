@@ -91,6 +91,37 @@ describe('the hash chain', () => {
     }
   });
 
+  it('reads a manifest written before `retained` existed at all', async () => {
+    // This crashed the nightly build job on 2026-08-04 and took the day's digest
+    // and ledger upload with it: `manifest.retained.length` on a manifest written
+    // before f59ae1d, where the field does not exist. TypeError inside
+    // readManifests — upstream of transcribe(), so the "ledger mode always exits
+    // zero" promise never got a chance to apply.
+    //
+    // Those manifests are in the bucket permanently. An append-only archive keeps
+    // every shape it has ever written, so a reader must default, not assume.
+    const store = newStore();
+    const pre = {
+      runId: '2026-08-03T01-04-00Z', schema: 1,
+      startedAt: 'a', completedAt: 'b', sinceSeq: 1, lastSeq: 2, mode: 'steady',
+      feedBlob: { key: 'k', sha256: 's', rows: 1 },
+      obsShards: [], queued: 0, fetched: 0, deferred: 0, bytesWritten: 1,
+      // No `retained`, no `prevRunId`, no `prevManifestSha256`, no `budget`.
+    };
+    await store.put(
+      `raw/runs/2026/08/03/${pre.runId}.json`,
+      Buffer.from(`${JSON.stringify(pre, null, 2)}\n`, 'utf8'),
+    );
+
+    const manifests = await readManifests(store, new Date(`${DAY}T00:00:00Z`));
+    assert.equal(manifests.length, 1);
+    assert.equal(manifests[0]!.objects, 1, 'the feed blob, and nothing it cannot see');
+
+    // And it transcribes and verifies as a chain start rather than a defect.
+    const report = verifyChain(transcribe(DAY, manifests));
+    assert.equal(report.defects, 0);
+  });
+
   it('accepts a manifest written before the chain existed', async () => {
     // Every manifest already in the archive has no prev fields at all. Those are
     // chain starts, not breaks — reading them as breaks would mean the feature

@@ -7,7 +7,7 @@ import { gunzipSync } from 'node:zlib';
 
 import * as cursorMod from '../src/cursor.ts';
 import type { DrainResult, FeedRow } from '../src/feed.ts';
-import { decodeJsonl, sha256Hex, ShardWriter } from '../src/jsonl.ts';
+import { decodeJsonl, noGuard, sha256Hex, ShardWriter } from '../src/jsonl.ts';
 import { canonicalManifestBytes, type RunManifest } from '../src/manifest.ts';
 import type { Gap, Observation, Row } from '../src/observation.ts';
 import {
@@ -244,7 +244,7 @@ describe('what must survive the layout change', () => {
 describe('ShardWriter.pendingKey', () => {
   it('names the shard each row actually lands in, across a flush', async () => {
     const store = newStore();
-    const writer = new ShardWriter(store, (part) => `t/part-${part}.jsonl.gz`);
+    const writer = new ShardWriter(store, (part) => `t/part-${part}.jsonl.gz`, noGuard);
     const expected: string[] = [];
 
     // 260 rows, so the 250-row auto-flush fires partway through.

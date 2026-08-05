@@ -21,9 +21,15 @@ export type RunManifest = {
    *     per-item sha256 moved into the rows inside them.
    *
    * Nothing reads this. It is an honesty marker so a reader meeting an old
-   * manifest can tell why the element shape differs. Both eras still satisfy
-   * ledger.ts's object arithmetic, because in both `retained.length` is the
-   * number of objects the run wrote for retained packuments.
+   * manifest can tell why the element shape differs.
+   *
+   * This comment used to claim "both eras still satisfy ledger.ts's object
+   * arithmetic". That was wrong, and the omission cost a night's digest: it
+   * forgot the era BEFORE `retained` existed at all, whose manifests are still
+   * sitting in the bucket and always will be. `readManifests` now defaults the
+   * field rather than trusting any claim made here. In an append-only archive
+   * every shape ever written stays readable forever — count the eras, then
+   * default anyway.
    */
   readonly schema: 1 | 2;
   /** The chain. `null` means "chain begins here": genesis, a manifest written

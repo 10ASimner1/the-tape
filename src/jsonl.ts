@@ -41,19 +41,46 @@ export function decodeJsonl<T>(text: string): T[] {
     .map((line) => JSON.parse(line) as T);
 }
 
+/**
+ * An explicit "these bytes carry nothing to redact".
+ *
+ * Exists so that opting out is a thing a reader can SEE in the call, rather than
+ * an absent argument nobody notices. There are currently no callers, and that is
+ * the intended number.
+ */
+export function noGuard(_bytes: string, _where: string): void {
+  // Deliberately empty.
+}
+
 export function sha256Hex(bytes: string | Uint8Array): string {
   return createHash('sha256').update(bytes as never).digest('hex');
 }
 
-/** One-shot: encode, gzip, hash and store a complete set of rows. */
+/**
+ * One-shot: encode, gzip, hash and store a complete set of rows.
+ *
+ * The guard is REQUIRED, and that is the whole point.
+ *
+ * It was optional, and exactly one caller forgot it — `syncOsv`. Every other
+ * writer passed `assertNoPII`. The result was 1,022 raw personal addresses
+ * written into `raw/osv/` while every other prefix in the archive held zero and
+ * 266,000+ salted hashes: the project's one inviolable rule, broken on the single
+ * path that opted out of enforcing it. `pii.ts`'s own header even names OSV
+ * `credits[].contact` as the field its enumeration missed, and then argues a
+ * byte-level chokepoint makes enumeration unnecessary — which is true only of
+ * paths that actually call it.
+ *
+ * A required parameter turns "someone forgot" into a compile error. If a caller
+ * genuinely has nothing to check, it must say so out loud by passing `noGuard`.
+ */
 export async function putJsonl(
   store: Store,
   key: string,
   rows: readonly unknown[],
-  guard?: (bytes: string, where: string) => void,
+  guard: (bytes: string, where: string) => void,
 ): Promise<WrittenShard> {
   const text = encodeJsonl(rows);
-  guard?.(text, key);
+  guard(text, key);
   const gz = gzipSync(Buffer.from(text, 'utf8'), { level: 9 });
   await store.put(key, gz);
   return {
@@ -69,7 +96,7 @@ export async function putJsonl(
 export class ShardWriter {
   readonly #store: Store;
   readonly #keyFor: (part: number) => string;
-  readonly #guard: ((bytes: string, where: string) => void) | undefined;
+  readonly #guard: (bytes: string, where: string) => void;
   #buffer: unknown[] = [];
   #bufferBytes = 0;
   #part = 0;
@@ -78,7 +105,8 @@ export class ShardWriter {
   constructor(
     store: Store,
     keyFor: (part: number) => string,
-    guard?: (bytes: string, where: string) => void,
+    /** Required, for the reason in putJsonl. Pass `noGuard` to opt out visibly. */
+    guard: (bytes: string, where: string) => void,
   ) {
     this.#store = store;
     this.#keyFor = keyFor;
