@@ -124,6 +124,39 @@ describe('assertNoPII — does not fire on npm\'s own vocabulary', () => {
   });
 });
 
+describe('the error message is itself an egress point', () => {
+  it('does not reprint a percent-encoded address it failed to match', () => {
+    // This actually happened: a maintainer address written `%40` instead of `@`
+    // did not match EMAIL_RE, so redactedContext left it alone and PIILeakError's
+    // message carried it verbatim into a PUBLIC workflow log on 2026-08-03, which
+    // GitHub retains for 90 days. The gate refused the write and leaked the
+    // address in the act of refusing.
+    const encoded = 'ada%40lovelace.example.com';
+    let message = '';
+    try {
+      assertNoPII(`{"contact":"${encoded}","email":"x"}`, 'log-leak');
+    } catch (err) {
+      message = (err as Error).message;
+    }
+    assert.ok(message.length > 0, 'the gate must still refuse');
+    assert.ok(!message.includes('lovelace'), 'and must not quote the address back');
+    assert.ok(!message.includes(encoded));
+  });
+
+  it('masks the other obfuscated separators too', () => {
+    for (const sep of ['&#64;', '[at]', '(at)']) {
+      const addr = `grace${sep}hopper.example.org`;
+      let message = '';
+      try {
+        assertNoPII(`{"email":"y","note":"${addr}"}`, 'log-leak');
+      } catch (err) {
+        message = (err as Error).message;
+      }
+      assert.ok(!message.includes('hopper'), `${sep} must be masked`);
+    }
+  });
+});
+
 describe('the gate must not be stallable by its own input', () => {
   it('scans a long run of local-part characters in linear time', () => {
     // EMAIL_RE used unbounded quantifiers and backtracked QUADRATICALLY on a run

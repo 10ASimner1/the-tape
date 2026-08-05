@@ -164,11 +164,29 @@ export class PIILeakError extends Error {
   }
 }
 
-/** Show enough context to find the field, without reprinting the address itself. */
+/**
+ * Show enough context to find the field, without reprinting the address itself.
+ *
+ * The escaped forms are not paranoia. This helper masked only what EMAIL_RE
+ * matches, so a PERCENT-ENCODED address — `%40` where the `@` should be — sailed
+ * straight through and was printed verbatim into a public workflow log on
+ * 2026-08-03, where GitHub keeps it for 90 days. The message is the one place
+ * where a NEAR-miss of the address rule is still a leak, because the whole
+ * purpose of this function is to quote bytes that just failed the check.
+ *
+ * So it masks the escaped spellings first, then the literal one. A false
+ * positive here costs nothing: the output is a debugging hint, not evidence.
+ */
 function redactedContext(text: string, index: number): string {
   const start = Math.max(0, index - 60);
   const slice = text.slice(start, Math.min(text.length, index + 60));
-  return slice.replace(new RegExp(EMAIL_RE.source, 'g'), '<REDACTED-ADDRESS>');
+  const local = '[A-Za-z0-9._%+-]{1,64}';
+  const domain = '[A-Za-z0-9.-]{1,255}\\.[A-Za-z]{2,24}';
+  return slice
+    // Percent-encoded, HTML-entity and obfuscated separators, before the plain rule.
+    .replace(new RegExp(`${local}(?:%40|&#0*64;|&commat;|\\[at\\]|\\(at\\))${domain}`, 'gi'),
+      '<REDACTED-ADDRESS>')
+    .replace(new RegExp(EMAIL_RE.source, 'g'), '<REDACTED-ADDRESS>');
 }
 
 const asText = (bytes: string | Uint8Array): string =>
