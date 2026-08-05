@@ -23,6 +23,8 @@ import { decodeJsonl } from '../jsonl.ts';
 import { log } from '../log.ts';
 import type { Gap, Observation, Row } from '../observation.ts';
 import { affectsOf, type OsvRecord } from '../osv.ts';
+import { hashEmail } from '../pii.ts';
+import { redactEmailsDeep } from '../redact.ts';
 import type { Store } from '../store.ts';
 import { deriveStep, isDiffable, type DerivedEvent } from './derive.ts';
 import { PopularIndex, scoreName } from './typosquat.ts';
@@ -203,7 +205,21 @@ export async function build(
   for (const { key } of await store.list('raw/osv/')) {
     const bytes = await store.get(key);
     if (bytes === null) continue;
-    for (const record of decodeJsonl<OsvRecord>(gunzipSync(bytes).toString('utf8'))) {
+    for (const stored of decodeJsonl<OsvRecord>(gunzipSync(bytes).toString('utf8'))) {
+      // Redacted again HERE, not only on the way in.
+      //
+      // syncOsv wrote these records without redacting or gating for the lifetime
+      // of that code path — 1,022 personal addresses across 848 records, in
+      // credits[].contact[], `details` free text and IOC urls (docs/incidents.md).
+      // That is fixed at the source, but the objects already in the archive are
+      // permanent: the tape is append-only and cleaning them is a deliberate
+      // operator action, not something a nightly job should assume has happened.
+      //
+      // So the index does not trust the archive. Without this, `osv_records.raw`
+      // keeps those addresses in a derived artifact that gets rebuilt nightly —
+      // and the moment that database is persisted between runs rather than
+      // discarded, a transient leak becomes a retained one.
+      const record = redactEmailsDeep(stored, hashEmail) as OsvRecord;
       insertOsv.run(
         record.id, record.modified ?? null, (record['published'] as string) ?? null,
         record.summary ?? null, record.id.startsWith('MAL-') ? 1 : 0, JSON.stringify(record),
