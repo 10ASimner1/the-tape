@@ -257,7 +257,7 @@ in git, and a graded spend cap. 144 tests. Zero runtime dependencies.
 
 **Outstanding, in priority order:**
 
-1. **A no-delete B2 credential**, and a separate **read-only** one for the mirror job. The recorder never deletes and the mirror only reads the primary, so both can be reissued with narrower scopes — via the B2 API, since the web UI cannot express it. Point `mirror.yml`'s `TAPE_S3_KEY_ID`/`SECRET` at the read-only key and that job loses the ability to touch the archive at all.
+1. **A no-delete B2 credential**, and a separate **read-only** one for the mirror job. VERIFIED 2026-08-05: the key in use (`tape-recorder`, `003ed3f70d1cda3…`) holds `deleteFiles`, `writeBuckets`, `writeBucketLifecycleRules` and the rest — it is close to a full-power key scoped to the bucket. No CODE path calls delete (`.delete(` has zero call sites in `src/`), but that is the code being disciplined, not the credential being constrained. Do not repeat the mistake of quoting the intent as though it were the state. Reissue via the B2 API; the web UI cannot express it. Point `mirror.yml`'s `TAPE_S3_KEY_ID`/`SECRET` at the read-only key and that job loses the ability to touch the archive at all.
 2. **A privacy notice.** The repo is public and the project processes maintainer data at scale.
 3. **Re-derive the storage constants from `usage`.** `node src/main.ts usage` now reports real stored bytes per prefix. The budget's soft/hard fractions should be tuned against that, never against §6 — those are the constants this project already got wrong by 13× from a desk estimate.
 4. **Make the nightly index build incremental.** It re-reads all of `raw/obs/`
@@ -291,6 +291,7 @@ publishes.
 ## 9. Where the reasoning lives
 
 - **[`docs/assumptions.md`](assumptions.md)** — what was verified against the live APIs, when, and what it means. Read before changing any constant.
+- **[`docs/incidents.md`](incidents.md)** — what has actually gone wrong, how it was found, and what changed so it cannot recur the same way. Required by Part III §5 and §8.
 - **[`README.md`](../README.md)** — architecture and the rebuild-from-raw recipe.
 - **[`test/fixtures/README.md`](../test/fixtures/README.md)** — why each fixture exists and what it proves.
 - **`src/config.ts`** — every tunable, with the measurement behind it.
