@@ -1,0 +1,926 @@
+{
+  "date": "2026-08-04",
+  "generatedAt": "2026-08-05T06:06:08.682Z",
+  "totals": {
+    "packagesObserved": 52357,
+    "publishes": 77552,
+    "newPackages": 9768,
+    "packageUnpublishes": 9,
+    "versionUnpublishes": 25033,
+    "maintainerChanges": 485,
+    "revGaps": 10777,
+    "gone": 40
+  },
+  "graveyard": [
+    {
+      "name": "@datazoom-staging/collector_shaka",
+      "diedAt": "2026-08-04T16:36:44.000Z",
+      "ageAtDeathDays": 0,
+      "versionsLost": 1,
+      "maintainers": [
+        "akhilv",
+        "datazoom-admin",
+        "erikdz"
+      ],
+      "unpublishedBy": null
+    },
+    {
+      "name": "tinhthanhvn-alpha",
+      "diedAt": "2026-08-04T16:08:14.000Z",
+      "ageAtDeathDays": 1,
+      "versionsLost": 2,
+      "maintainers": [],
+      "unpublishedBy": null
+    },
+    {
+      "name": "bewide-kit",
+      "diedAt": "2026-08-04T12:12:28.000Z",
+      "ageAtDeathDays": 0,
+      "versionsLost": 1,
+      "maintainers": [],
+      "unpublishedBy": null
+    },
+    {
+      "name": "n8n-nodes-project-tasks",
+      "diedAt": "2026-08-04T06:45:10.000Z",
+      "ageAtDeathDays": 1,
+      "versionsLost": 3,
+      "maintainers": [],
+      "unpublishedBy": null
+    },
+    {
+      "name": "easydsbots",
+      "diedAt": "2026-08-04T04:42:38.000Z",
+      "ageAtDeathDays": 0,
+      "versionsLost": 1,
+      "maintainers": [],
+      "unpublishedBy": null
+    },
+    {
+      "name": "@alsocoder/apna-form",
+      "diedAt": "2026-08-04T03:52:47.000Z",
+      "ageAtDeathDays": 0,
+      "versionsLost": 1,
+      "maintainers": [
+        "alsocoder-org"
+      ],
+      "unpublishedBy": null
+    },
+    {
+      "name": "@maronn-oidc/experimental",
+      "diedAt": "2026-08-04T00:54:36.000Z",
+      "ageAtDeathDays": 1,
+      "versionsLost": 2,
+      "maintainers": [
+        "maronn"
+      ],
+      "unpublishedBy": null
+    },
+    {
+      "name": "@maronn-oidc/cli",
+      "diedAt": "2026-08-04T00:54:18.000Z",
+      "ageAtDeathDays": 12,
+      "versionsLost": 2,
+      "maintainers": [
+        "maronn"
+      ],
+      "unpublishedBy": null
+    },
+    {
+      "name": "@maronn-oidc/core",
+      "diedAt": "2026-08-04T00:54:03.000Z",
+      "ageAtDeathDays": 12,
+      "versionsLost": 2,
+      "maintainers": [
+        "maronn"
+      ],
+      "unpublishedBy": null
+    }
+  ],
+  "resurfaced": [
+    {
+      "name": "jfrog-malicious-placeholder",
+      "diedAt": "2026-08-03T18:37:19.000Z",
+      "ageAtDeathDays": 0,
+      "versionsLost": 1,
+      "maintainers": [],
+      "unpublishedBy": null
+    },
+    {
+      "name": "browsersmith",
+      "diedAt": "2026-08-03T16:21:12.000Z",
+      "ageAtDeathDays": 0,
+      "versionsLost": 1,
+      "maintainers": [
+        "jverneuer"
+      ],
+      "unpublishedBy": null
+    },
+    {
+      "name": "puppeteer-captcha-solver",
+      "diedAt": "2024-10-13T08:02:12.000Z",
+      "ageAtDeathDays": 272,
+      "versionsLost": 4,
+      "maintainers": [
+        "domtasks-automation"
+      ],
+      "unpublishedBy": null
+    },
+    {
+      "name": "@vectara/search",
+      "diedAt": "2024-01-10T19:17:34.000Z",
+      "ageAtDeathDays": 7,
+      "versionsLost": 2,
+      "maintainers": [
+        "aamirbutt",
+        "adeelehsan",
+        "cjcenizal",
+        "maazvectara",
+        "mansurvectara",
+        "ofermend",
+        "rimavectara",
+        "tallat"
+      ],
+      "unpublishedBy": null
+    },
+    {
+      "name": "@multivisio/jeanny",
+      "diedAt": "2022-07-11T13:21:08.000Z",
+      "ageAtDeathDays": 0,
+      "versionsLost": 1,
+      "maintainers": [
+        "aynaz-gi",
+        "florianhochstatter",
+        "mikemo"
+      ],
+      "unpublishedBy": null
+    },
+    {
+      "name": "@heathmont/custom-typescript-react-apollo",
+      "diedAt": "2019-07-04T06:43:46.000Z",
+      "ageAtDeathDays": 1,
+      "versionsLost": 1,
+      "maintainers": [
+        "alekstv",
+        "alisachyo",
+        "anderson.amorim",
+        "anton_frolov_yolo",
+        "apodlaski",
+        "beygi",
+        "bruno.louvem",
+        "chaubeyashutosh",
+        "dpshnv",
+        "dr.champ",
+        "drchamp",
+        "erikcardona",
+        "hlt102",
+        "hmburger",
+        "hypno",
+        "iamdnch",
+        "iuzhakov",
+        "karl-kallavus",
+        "karlosmid-ioent",
+        "keionov",
+        "kekekeke",
+        "kino-was-here",
+        "kriips",
+        "levin_ua",
+        "marko.tomberg",
+        "marsta",
+        "memoryinject",
+        "mkjell",
+        "mlamp",
+        "nemtish",
+        "neo_arcanjo",
+        "no4ek",
+        "oladetounjed",
+        "olegkivi",
+        "oleksandr.makarenko",
+        "onakorchevska",
+        "pavtom",
+        "pkgodara",
+        "rashmimadabavita",
+        "reshma.ramnani",
+        "rochelle.abeywickrama",
+        "roman.danilov",
+        "salvatorecriscioneyolo",
+        "sanderv-ioent",
+        "segaz2002",
+        "shiwantha-lakmal",
+        "sleekyom",
+        "snsemenova",
+        "supercede",
+        "thais_oliveira",
+        "tidart",
+        "tkullisaar",
+        "tsenturk",
+        "twinsmaj",
+        "verrev",
+        "vladimir.puz",
+        "wildstrings",
+        "yasirasar",
+        "yuliana84"
+      ],
+      "unpublishedBy": null
+    }
+  ],
+  "versionYanks": [
+    {
+      "name": "uniweb",
+      "versions": [
+        "0.0.0"
+      ],
+      "count": 1,
+      "oldest": "2012-05-14T19:31:44.000Z"
+    },
+    {
+      "name": "alchemy",
+      "versions": [
+        "0.1.0"
+      ],
+      "count": 1,
+      "oldest": "2013-10-25T16:22:49.000Z"
+    },
+    {
+      "name": "shaders",
+      "versions": [
+        "0.0.0"
+      ],
+      "count": 1,
+      "oldest": "2013-10-30T20:39:41.000Z"
+    },
+    {
+      "name": "spawncamp",
+      "versions": [
+        "0.0.1"
+      ],
+      "count": 1,
+      "oldest": "2014-03-24T08:04:58.000Z"
+    },
+    {
+      "name": "lexical",
+      "versions": [
+        "0.0.1"
+      ],
+      "count": 1,
+      "oldest": "2014-06-13T06:09:12.000Z"
+    },
+    {
+      "name": "slack-commander",
+      "versions": [
+        "1.0.0"
+      ],
+      "count": 1,
+      "oldest": "2014-12-12T17:20:45.000Z"
+    },
+    {
+      "name": "ember-data",
+      "versions": [
+        "1.0.0-beta.13"
+      ],
+      "count": 1,
+      "oldest": "2014-12-25T21:36:37.000Z"
+    },
+    {
+      "name": "playwright",
+      "versions": [
+        "0.0.0"
+      ],
+      "count": 1,
+      "oldest": "2015-01-23T20:49:28.000Z"
+    },
+    {
+      "name": "arcadible",
+      "versions": [
+        "0.0.0"
+      ],
+      "count": 1,
+      "oldest": "2015-02-07T17:35:09.000Z"
+    },
+    {
+      "name": "tabris",
+      "versions": [
+        "0.9.1"
+      ],
+      "count": 1,
+      "oldest": "2015-02-19T20:53:32.000Z"
+    },
+    {
+      "name": "babylonjs",
+      "versions": [
+        "2.0.0"
+      ],
+      "count": 1,
+      "oldest": "2015-05-27T10:19:00.000Z"
+    },
+    {
+      "name": "voximplant-websdk",
+      "versions": [
+        "3.0.15856"
+      ],
+      "count": 1,
+      "oldest": "2015-07-19T15:00:57.000Z"
+    },
+    {
+      "name": "homebridge",
+      "versions": [
+        "0.1.1"
+      ],
+      "count": 1,
+      "oldest": "2015-08-22T15:51:33.000Z"
+    },
+    {
+      "name": "react-jwt-store",
+      "versions": [
+        "1.0.2"
+      ],
+      "count": 1,
+      "oldest": "2015-08-25T15:08:42.000Z"
+    },
+    {
+      "name": "heroku-node",
+      "versions": [
+        "0.0.1"
+      ],
+      "count": 1,
+      "oldest": "2015-10-23T19:11:42.000Z"
+    },
+    {
+      "name": "mise",
+      "versions": [
+        "1.0.0"
+      ],
+      "count": 1,
+      "oldest": "2015-10-30T03:37:17.000Z"
+    },
+    {
+      "name": "slf",
+      "versions": [
+        "0.0.0"
+      ],
+      "count": 1,
+      "oldest": "2015-12-22T18:26:59.000Z"
+    },
+    {
+      "name": "passbolt-styleguide",
+      "versions": [
+        "0.3.23"
+      ],
+      "count": 1,
+      "oldest": "2016-02-16T13:50:43.000Z"
+    },
+    {
+      "name": "message-bus-client",
+      "versions": [
+        "1.0.0"
+      ],
+      "count": 1,
+      "oldest": "2016-02-25T23:30:24.000Z"
+    },
+    {
+      "name": "json-future",
+      "versions": [
+        "1.1.6"
+      ],
+      "count": 1,
+      "oldest": "2016-06-19T10:44:18.000Z"
+    },
+    {
+      "name": "addons-linter",
+      "versions": [
+        "0.12.0"
+      ],
+      "count": 1,
+      "oldest": "2016-06-22T15:49:44.000Z"
+    },
+    {
+      "name": "branch-sdk",
+      "versions": [
+        "2.5.0"
+      ],
+      "count": 1,
+      "oldest": "2016-07-14T19:42:23.000Z"
+    },
+    {
+      "name": "amqplib-retry",
+      "versions": [
+        "1.1.4"
+      ],
+      "count": 1,
+      "oldest": "2016-08-02T18:26:02.000Z"
+    },
+    {
+      "name": "webiny",
+      "versions": [
+        "1.0.0-beta"
+      ],
+      "count": 1,
+      "oldest": "2016-08-04T15:00:56.000Z"
+    },
+    {
+      "name": "read-last-lines",
+      "versions": [
+        "1.0.0"
+      ],
+      "count": 1,
+      "oldest": "2016-08-15T01:07:04.000Z"
+    }
+  ],
+  "typosquats": [
+    {
+      "name": "bunload",
+      "score": 0.469,
+      "nearest": "unload",
+      "distance": 1
+    },
+    {
+      "name": "devmap",
+      "score": 0.451,
+      "nearest": "devlop",
+      "distance": 2
+    },
+    {
+      "name": "deskos",
+      "score": 0.395,
+      "nearest": "des.js",
+      "distance": 2
+    },
+    {
+      "name": "libd2",
+      "score": 0.294,
+      "nearest": "lib0",
+      "distance": 2
+    },
+    {
+      "name": "backql",
+      "score": 0.27,
+      "nearest": "backo2",
+      "distance": 2
+    },
+    {
+      "name": "tv-mcp",
+      "score": 0.233,
+      "nearest": "ts-map",
+      "distance": 2
+    },
+    {
+      "name": "taskbell",
+      "score": 0.233,
+      "nearest": "taskkill",
+      "distance": 2
+    },
+    {
+      "name": "symify",
+      "score": 0.233,
+      "nearest": "domify",
+      "distance": 2
+    },
+    {
+      "name": "spawnbx",
+      "score": 0.233,
+      "nearest": "spawnd",
+      "distance": 2
+    },
+    {
+      "name": "rhydb",
+      "score": 0.233,
+      "nearest": "hdb",
+      "distance": 2
+    }
+  ],
+  "malicious": [
+    {
+      "osvId": "MAL-2026-11105",
+      "name": "xo-twofa",
+      "summary": "Malicious code in xo-twofa (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11072",
+      "name": "wsh4_edu",
+      "summary": "Malicious code in wsh4_edu (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11071",
+      "name": "whs4_eud",
+      "summary": "Malicious code in whs4_eud (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11070",
+      "name": "whs4_deu",
+      "summary": "Malicious code in whs4_deu (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10698",
+      "name": "websight2-p2p",
+      "summary": "Malicious code in websight2-p2p (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11063",
+      "name": "xo-member-components",
+      "summary": "Malicious code in xo-member-components (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10697",
+      "name": "websight-p2p",
+      "summary": "Malicious code in websight-p2p (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11030",
+      "name": "vitest-axios",
+      "summary": "Malicious code in vitest-axios (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11497",
+      "name": "vite-tsconfig-svg",
+      "summary": "Malicious code in vite-tsconfig-svg (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11496",
+      "name": "vite-config-svg",
+      "summary": "Malicious code in vite-config-svg (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11017",
+      "name": "vectormark",
+      "summary": "Malicious code in vectormark (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10138",
+      "name": "uac-package",
+      "summary": "Malicious code in uac-package (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11550",
+      "name": "twork-data-services-aggregator-api-v2-data-view-company-company-profile-mf-data-transformer",
+      "summary": "Malicious code in twork-data-services-aggregator-api-v2-data-view-company-company-profile-mf-data-transformer (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10938",
+      "name": "twiliointernal-messaging-toolbox",
+      "summary": "Malicious code in twiliointernal-messaging-toolbox (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10935",
+      "name": "twilio-platform-async-data-fetch",
+      "summary": "Malicious code in twilio-platform-async-data-fetch (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10990",
+      "name": "ts-vitest",
+      "summary": "Malicious code in ts-vitest (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11159",
+      "name": "toll_free",
+      "summary": "Malicious code in toll_free (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11549",
+      "name": "tinkoff-terminal-kit-carousel",
+      "summary": "Malicious code in tinkoff-terminal-kit-carousel (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11495",
+      "name": "test-dev-watch",
+      "summary": "Malicious code in test-dev-watch (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11493",
+      "name": "test-dev-store",
+      "summary": "Malicious code in test-dev-store (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11489",
+      "name": "test-dev-dispatch",
+      "summary": "Malicious code in test-dev-dispatch (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11488",
+      "name": "test-dev-boot",
+      "summary": "Malicious code in test-dev-boot (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10773",
+      "name": "telemetry-axios",
+      "summary": "Malicious code in telemetry-axios (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10767",
+      "name": "syft-acp-util",
+      "summary": "Malicious code in syft-acp-util (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10766",
+      "name": "syft-acp-uikit",
+      "summary": "Malicious code in syft-acp-uikit (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10765",
+      "name": "syft-acp-core",
+      "summary": "Malicious code in syft-acp-core (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11065",
+      "name": "swiper_angular",
+      "summary": "Malicious code in swiper_angular (npm)"
+    },
+    {
+      "osvId": "MAL-2026-6715",
+      "name": "svgcraft-core",
+      "summary": "Malicious code in svgcraft-core (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11548",
+      "name": "streak-math-abz",
+      "summary": "Malicious code in streak-math-abz (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10982",
+      "name": "streak-daycount",
+      "summary": "Malicious code in streak-daycount (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11035",
+      "name": "streak-bucket-lib",
+      "summary": "Malicious code in streak-bucket-lib (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11103",
+      "name": "stargateproxyserv",
+      "summary": "Malicious code in stargateproxyserv (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11486",
+      "name": "smart-npv-mcp",
+      "summary": "Malicious code in smart-npv-mcp (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11547",
+      "name": "simple-date-formatter-util-9",
+      "summary": "Malicious code in simple-date-formatter-util-9 (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11546",
+      "name": "simple-date-formatter-util-6",
+      "summary": "Malicious code in simple-date-formatter-util-6 (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11545",
+      "name": "simple-date-formatter-util-15",
+      "summary": "Malicious code in simple-date-formatter-util-15 (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11544",
+      "name": "simple-date-formatter-util-10",
+      "summary": "Malicious code in simple-date-formatter-util-10 (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11543",
+      "name": "simple-date-formatter-new-5",
+      "summary": "Malicious code in simple-date-formatter-new-5 (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10972",
+      "name": "signzy-field-level-encrypter",
+      "summary": "Malicious code in signzy-field-level-encrypter (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11482",
+      "name": "sap-mcp-facilitator",
+      "summary": "Malicious code in sap-mcp-facilitator (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11479",
+      "name": "rollup-plugin-polyfill-hold",
+      "summary": "Malicious code in rollup-plugin-polyfill-hold (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11478",
+      "name": "rollup-plugin-polyfill-helper",
+      "summary": "Malicious code in rollup-plugin-polyfill-helper (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11102",
+      "name": "riskunifiedgatewayserv",
+      "summary": "Malicious code in riskunifiedgatewayserv (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10965",
+      "name": "requestor-util",
+      "summary": "Malicious code in requestor-util (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10778",
+      "name": "relativity-pdfjs-dist",
+      "summary": "Malicious code in relativity-pdfjs-dist (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10439",
+      "name": "react-hot-svg",
+      "summary": "Malicious code in react-hot-svg (npm)"
+    },
+    {
+      "osvId": "MAL-2026-10104",
+      "name": "px8my",
+      "summary": "Malicious code in px8my (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11062",
+      "name": "preferenceslifecycle-paypal",
+      "summary": "Malicious code in preferenceslifecycle-paypal (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11059",
+      "name": "pp-react-ui5",
+      "summary": "Malicious code in pp-react-ui5 (npm)"
+    },
+    {
+      "osvId": "MAL-2026-11475",
+      "name": "pm-claude-skills-mcp",
+      "summary": "Malicious code in pm-claude-skills-mcp (npm)"
+    }
+  ],
+  "installScripts": [
+    {
+      "name": "@shyntech-proximity/prox-cli",
+      "version": "0.1.4",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "pi-mega-compact",
+      "version": "0.20.9",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@zuens2020/mcp-relay",
+      "version": "0.2.7",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@comment-io/cli",
+      "version": "0.1.49-alpha.1255",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@openmrs/esm-stock-management-app",
+      "version": "3.2.2-pre.1624",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "opencode-ai",
+      "version": "0.0.0-beta-202608042333",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "claude-spotter",
+      "version": "1.5.6",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "claude-memory-layer",
+      "version": "2.2.1",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "daedalus-cli",
+      "version": "3.15.0",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "brisk-ai",
+      "version": "0.1.14",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "durindoor",
+      "version": "3.10.0",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "nanoepoch",
+      "version": "0.2.0",
+      "scripts": [
+        "install"
+      ]
+    },
+    {
+      "name": "@itentialopensource/adapter-tufin_secureapp",
+      "version": "1.0.9",
+      "scripts": [
+        "preinstall"
+      ]
+    },
+    {
+      "name": "enigma-cli",
+      "version": "1.35.2",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@myelixlabs/synapse-mcp",
+      "version": "0.0.0-bd800f50",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "opencode-engos-ai",
+      "version": "1.20.0",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@astryxdesign/core",
+      "version": "0.2.0-canary.79cf94a",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@astryxdesign/cli",
+      "version": "0.2.0-canary.79cf94a",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "moflo",
+      "version": "4.12.4-rc.4",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@sylphai/adal-cli",
+      "version": "1.5.7",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@sylphai/adal-cli-win32-x64",
+      "version": "1.5.7",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "gluon-ai",
+      "version": "0.1.0-beta.115",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "@sylphai/adal-cli-linux-x64",
+      "version": "1.5.7",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "gluon-ai",
+      "version": "0.1.0-beta.114",
+      "scripts": [
+        "postinstall"
+      ]
+    },
+    {
+      "name": "droid",
+      "version": "0.188.0",
+      "scripts": [
+        "postinstall"
+      ]
+    }
+  ],
+  "ops": {
+    "observations": 77720,
+    "gaps": 574,
+    "piiRefused": 16,
+    "securityHolders": 2
+  }
+}
