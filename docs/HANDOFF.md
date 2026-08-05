@@ -1,7 +1,12 @@
-# Handoff
+# Handoff — operations
 
 Everything a person needs to run, debug, or take over The Tape. Written for
 someone who has never seen it — including future you, at 2am, when it has stopped.
+
+> Not to be confused with **[`../HANDOFF.md`](../HANDOFF.md)** at the repo root,
+> which is a *session* handoff: what the last stretch of work changed, what was
+> got wrong along the way, and what to pick up next. This file is the operational
+> one and is authoritative for running the system.
 
 **One-line summary:** a recorder captures npm's changes feed every 15 minutes into
 an append-only archive on Backblaze B2; a nightly job rebuilds a disposable SQLite
